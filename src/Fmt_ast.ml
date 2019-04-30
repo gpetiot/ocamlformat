@@ -848,14 +848,16 @@ and fmt_pattern c ?pro ?parens ({ctx= ctx0; ast= pat} as xpat) =
         let maybe_cmts = Option.value_map ~default:Fn.id ~f:(Cmts.fmt c) in
         let fmt_field ?field_loc ?cnstr_loc ?ident_loc ?typ ?pat ~ctx c =
           let fmt_type ?(parens = false) t =
-            fmt_if Poly.(c.conf.field_space = `Loose) " "
-            $ str ": "
-            $ fmt_core_type c (sub_typ ~ctx t)
-            $ fmt_if parens ")"
+            str ": " $ fmt_core_type c (sub_typ ~ctx t) $ fmt_if parens ")"
           in
           let fmt_pat ?(parens = false) ~ctx p =
             fmt "=@;<1 2>" $ fmt_if parens "("
             $ cbox 0 (fmt_pattern c (sub_pat ~ctx p))
+          in
+          let field_space =
+            match c.conf.field_space with
+            | `Loose -> str " "
+            | `Tight -> noop
           in
           maybe_cmts field_loc @@ maybe_cmts cnstr_loc
           @@ cbox 0
@@ -864,10 +866,15 @@ and fmt_pattern c ?pro ?parens ({ctx= ctx0; ast= pat} as xpat) =
                match (typ, pat) with
                | Some t, Some p -> (
                  match Source.typed_pattern t p with
-                 | `Type_first -> fmt_type t $ fmt_pat ~ctx p
+                 | `Type_first ->
+                     field_space $ fmt_type t $ fmt "@ " $ fmt_pat ~ctx p
                  | `Pat_first ->
-                     fmt_pat ~ctx ~parens:true p $ fmt_type ~parens:true t )
-               | _ -> opt typ fmt_type $ opt pat (fmt_pat ~ctx) )
+                     field_space
+                     $ fmt_pat ~ctx ~parens:true p
+                     $ fmt_type ~parens:true t )
+               | Some t, None -> field_space $ fmt_type t
+               | None, Some p -> field_space $ fmt_pat ~ctx p
+               | None, None -> noop )
         in
         hvbox 0
           ( Cmts.fmt c lid1.loc @@ Cmts.fmt c ppat_loc
@@ -1940,14 +1947,16 @@ and fmt_expression c ?(box = true) ?pro ?epi ?eol ?parens ?(indent_wrap = 0)
         let maybe_cmts = Option.value_map ~default:Fn.id ~f:(Cmts.fmt c) in
         let fmt_field ?field_loc ?cnstr_loc ?ident_loc ?typ ?expr c =
           let fmt_type ?(parens = false) t =
-            fmt_if Poly.(c.conf.field_space = `Loose) " "
-            $ str ": "
-            $ fmt_core_type c (sub_typ ~ctx t)
-            $ fmt_if parens ")"
+            str ": " $ fmt_core_type c (sub_typ ~ctx t) $ fmt_if parens ")"
           in
           let fmt_expr ?(parens = false) e =
             fmt "=@ " $ fmt_if parens "("
             $ cbox 0 (fmt_expression c (sub_exp ~ctx e))
+          in
+          let field_space =
+            match c.conf.field_space with
+            | `Loose -> str " "
+            | `Tight -> noop
           in
           maybe_cmts field_loc @@ maybe_cmts cnstr_loc
           @@ cbox 2
@@ -1956,10 +1965,14 @@ and fmt_expression c ?(box = true) ?pro ?epi ?eol ?parens ?(indent_wrap = 0)
                match (typ, expr) with
                | Some t, Some e -> (
                  match Source.typed_expression t e with
-                 | `Type_first -> fmt_type t $ fmt_expr e
+                 | `Type_first ->
+                     field_space $ fmt_type t $ fmt "@ " $ fmt_expr e
                  | `Expr_first ->
-                     fmt_expr ~parens:true e $ fmt_type ~parens:true t )
-               | _ -> opt typ fmt_type $ opt expr fmt_expr )
+                     field_space $ fmt_expr ~parens:true e
+                     $ fmt_type ~parens:true t )
+               | Some t, None -> field_space $ fmt_type t
+               | None, Some e -> field_space $ fmt_expr e
+               | None, None -> noop )
         in
         hvbox 0
           ( leading_cmt
