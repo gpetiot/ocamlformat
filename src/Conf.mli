@@ -12,7 +12,10 @@
 (** Configuration options *)
 
 type t =
-  { assignment_operator: [`Begin_line | `End_line]
+  { align_cases: bool
+  ; align_constructors_decl: bool
+  ; align_variants_decl: bool
+  ; assignment_operator: [`Begin_line | `End_line]
   ; break_cases: [`Fit | `Nested | `Toplevel | `Fit_or_vertical | `All]
   ; break_collection_expressions: [`Wrap | `Fit_or_vertical]
   ; break_infix: [`Wrap | `Fit_or_vertical]
