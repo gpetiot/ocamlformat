@@ -60,3 +60,21 @@ let fooooooooooo =
       (* foooooooooooooooooooooo foooooooooooooooo foooooooooooooo
          fooooooooo*)
   | _                   -> fooooooooooooooooooo
+
+let _ =
+  match (a, b) with
+  | A, B   -> a
+  | AA, BB -> b
+  | p      -> c
+
+let _ =
+  match (a, b) with
+  | A, B           -> a
+  | AA, BB         -> b
+  | longer_pattern -> c
+
+let _ =
+  match (a, b) with
+  | (A, B), B      -> a
+  | pat, BB        -> b
+  | longer_pattern -> c
