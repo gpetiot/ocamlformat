@@ -2669,22 +2669,30 @@ and fmt_class_type_field c ctx (cf : class_type_field) =
     $ fmt_atrs )
 
 and fmt_cases c ctx cs =
-  let rec pattern_len ?(parens = 0) = function
+  let rec pattern_len ?(parens = 0) pat =
+    match pat.ppat_desc with
     | Ppat_any -> Some 1
     | Ppat_var {txt= s; _}
      |Ppat_constant (Pconst_integer (s, _))
      |Ppat_constant (Pconst_float (s, _))
      |Ppat_construct ({txt= Lident s; _}, None) ->
         Some (String.length s)
+    | Ppat_construct ({txt= Lident s; _}, Some arg) -> (
+      match pattern_len ~parens:2 arg with
+      | Some arg -> Some (parens + String.length s + 1 + arg)
+      | None -> None )
     | Ppat_constant (Pconst_char _) -> Some 4 (* when the char is escaped *)
     | Ppat_variant (s, None) -> Some (String.length s + 1)
+    | Ppat_variant (s, Some arg) -> (
+      match pattern_len ~parens:2 arg with
+      | Some arg -> Some (parens + 1 + String.length s + 1 + arg)
+      | None -> None )
     | Ppat_constant (Pconst_string (s, _)) -> Some (String.length s + 2)
     | Ppat_tuple ps ->
         (* commas and parenthesis *)
         let init = ((List.length ps - 1) * 2) + parens in
         fold_pattern_len ~parens:2 ~init ~f:( + ) ps
-    | Ppat_alias _ | Ppat_interval _ | Ppat_construct _
-     |Ppat_variant (_, Some _)
+    | Ppat_alias _ | Ppat_interval _ | Ppat_construct _ | Ppat_variant _
      |Ppat_record _ | Ppat_array _ | Ppat_constraint _ | Ppat_type _
      |Ppat_or _ | Ppat_unpack _ | Ppat_lazy _ | Ppat_exception _
      |Ppat_extension _ | Ppat_open _ ->
@@ -2692,7 +2700,7 @@ and fmt_cases c ctx cs =
   and fold_pattern_len ?parens ?(init = 0) ~f ps =
     List.fold_until ~init ps
       ~f:(fun acc pat ->
-        match pattern_len ?parens pat.ppat_desc with
+        match pattern_len ?parens pat with
         | Some l -> Continue (f acc l)
         | None -> Stop None)
       ~finish:(fun acc -> Some acc)
@@ -2740,7 +2748,7 @@ and fmt_cases c ctx cs =
         fmt_if_k
           ( c.conf.align_cases
           && not (Cmts.has_after c.cmts xlhs.ast.ppat_loc) )
-          ( match (max_len_name, pattern_len xlhs.ast.ppat_desc) with
+          ( match (max_len_name, pattern_len xlhs.ast) with
           | Some max_len, Some len -> str (String.make (max_len - len) ' ')
           | _ -> noop )
       in

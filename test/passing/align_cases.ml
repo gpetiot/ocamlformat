@@ -33,8 +33,8 @@ type x =
 let fooooooooooo =
   match foooooooooooooooooooooooo with
   | Bfooooooooooooooooo -> foooooooooooo
-  | C (a, b, c, d) -> fooooooooooooooooooo
-  | _ -> fooooooooooooooooooo
+  | C (a, b, c, d)      -> fooooooooooooooooooo
+  | _                   -> fooooooooooooooooooo
 
 let fooooooooooo =
   match foooooooooooooooooooooooo with
@@ -78,3 +78,13 @@ let _ =
   | (A, B), B      -> a
   | pat, BB        -> b
   | longer_pattern -> c
+
+let _ =
+  match f with
+  | Foo     -> toto
+  | Bar ijx -> bar ijx
+
+let _ =
+  match f with
+  | `Foo     -> toto
+  | `Bar ijx -> bar ijx
