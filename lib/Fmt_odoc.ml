@@ -67,19 +67,66 @@ let fmt_verbatim_block s =
   in
   hvbox 0 (wrap "{v" "v}" content)
 
+let toplevel_block =
+  let open Re in
+  compile
+  @@ seq
+       [ rep space
+       ; char '#'
+       ; space
+       ; group (rep1 any)
+       ; str ";;"
+       ; rep space
+       ; group (rep any) ]
+
+let fmt_toplevel_code ~fmt_code s =
+  let open Result.Monad_infix in
+  let lines = String.split_lines s in
+  let lines = List.map ~f:String.lstrip lines in
+  let groups =
+    List.group lines ~break:(fun _ x -> String.is_prefix x ~prefix:"# ")
+  in
+  match List.map groups ~f:(String.concat ~sep:"\n") with
+  | [] -> Error ()
+  | toplevel_blocks -> (
+      let results =
+        List.map toplevel_blocks ~f:(fun s ->
+            match Re.exec_opt toplevel_block s with
+            | None -> Error ()
+            | Some g -> (
+                let toplevel_phrase = Re.Group.get g 1 in
+                fmt_code toplevel_phrase
+                >>| fun phrase ->
+                match Re.Group.get g 2 with
+                | "" -> str "# " $ phrase $ str ";;"
+                | output ->
+                    let lines = String.split_lines output in
+                    let lines = List.map ~f:String.lstrip lines in
+                    let output = list lines "@;<1 0>" str in
+                    vbox 0 (str "# " $ phrase $ str ";;" $ break 1 0 $ output)
+                ) )
+      in
+      match Result.all results with
+      | Ok [phrase] -> Ok phrase
+      | Ok phrases -> Ok (vbox 0 (list phrases "@;<1 0>" Fn.id))
+      | Error _ -> Error () )
+
 let fmt_code_block conf s =
   match conf.fmt_code s with
   | Ok formatted -> hvbox 0 (wrap "{[@;<1 2>" "@ ]}" formatted)
-  | Error () ->
-      let fmt_line ~first ~last:_ l =
-        let l = String.rstrip l in
-        if first then str l
-        else if String.length l = 0 then str "\n"
-        else fmt "@," $ str l
-      in
-      let lines = String.split_lines s in
-      let box = match lines with _ :: _ :: _ -> vbox 0 | _ -> hvbox 0 in
-      box (wrap "{[@;<1 2>" "@ ]}" (vbox 0 (list_fl lines fmt_line)))
+  | Error () -> (
+    match fmt_toplevel_code ~fmt_code:conf.fmt_code s with
+    | Ok formatted -> hvbox 0 (wrap "{[@;<1 2>" "@ ]}" formatted)
+    | Error () ->
+        let fmt_line ~first ~last:_ l =
+          let l = String.rstrip l in
+          if first then str l
+          else if String.length l = 0 then str "\n"
+          else fmt "@," $ str l
+        in
+        let lines = String.split_lines s in
+        let box = match lines with _ :: _ :: _ -> vbox 0 | _ -> hvbox 0 in
+        box (wrap "{[@;<1 2>" "@ ]}" (vbox 0 (list_fl lines fmt_line))) )
 
 let fmt_reference = ign_loc ~f:str_normalized
 
