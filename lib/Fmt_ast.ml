@@ -209,17 +209,26 @@ let value_binding_op_rec first rec_flag =
   | true, Nonrecursive -> ("let", false)
   | false, _ -> ("and", false)
 
-let fmt_recmodule c ctx items f ast =
-  let update_config c i = update_config c (Ast.attributes (ast i)) in
-  let grps = make_groups c items ast update_config in
+let fmt_recmodule c ctx items fmt_item ast =
   let break_struct = c.conf.break_struct || is_top ctx in
-  let fmt_grp ~first:first_grp ~last:_ itms =
-    list_fl itms (fun ~first ~last:_ (itm, c) ->
-        fmt_if_k (not first) (fmt_or break_struct "@;<1000 0>" "@ ")
-        $ maybe_disabled c (Ast.location (ast itm)) []
-          @@ fun c -> f c ctx ~rec_flag:true ~first:(first && first_grp) itm )
+  let update_config c i = update_config c (Ast.attributes (ast i)) in
+  let items = update_items_config c items update_config in
+  hvbox 0 @@ list_pn items
+  @@ fun ~prev (itm, c) ~next:_ ->
+  let first = Option.is_none prev in
+  let big_break =
+    match prev with
+    | Some (i1, c1) -> break_between c (ast i1, c1.conf) (ast itm, c.conf)
+    | _ -> false
   in
-  hvbox 0 (fmt_groups c ctx grps fmt_grp)
+  ( match (first, big_break, break_struct) with
+  | true, _, _ -> noop
+  | false, true, true -> fmt "\n@;<1000 0>"
+  | false, true, false -> fits_breaks "" "\n" $ fmt "@;<1000 0>"
+  | false, false, true -> fmt "@;<1000 0>"
+  | false, false, false -> fmt "@ " )
+  $ maybe_disabled c (Ast.location (ast itm)) []
+    @@ fun c -> fmt_item c ctx ~rec_flag:true ~first itm
 
 (* In several places, naked newlines (i.e. not "@\n") are used to avoid
    trailing space in open lines. *)
