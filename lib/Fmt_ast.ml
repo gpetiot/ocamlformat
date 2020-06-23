@@ -50,6 +50,10 @@ module Cmts = struct
         fmt ?pro ?epi ?eol ?adj:None c loc k )
 end
 
+let break_between {source; cmts; _} =
+  Ast.break_between source ~cmts ~has_cmts_before:Cmts.has_before
+    ~has_cmts_after:Cmts.has_after
+
 type block =
   { opn: Fmt.t
   ; pro: Fmt.t option
@@ -187,10 +191,7 @@ let update_items_config c items update_config =
 let make_groups c items ast update_config =
   let items = update_items_config c items update_config in
   let break (i1, c1) (i2, c2) =
-    Ast.break_between c.source ~cmts:c.cmts ~has_cmts_before:Cmts.has_before
-      ~has_cmts_after:Cmts.has_after
-      (ast i1, c1.conf)
-      (ast i2, c2.conf)
+    break_between c (ast i1, c1.conf) (ast i2, c2.conf)
   in
   List.group items ~break
 
@@ -4187,9 +4188,7 @@ and fmt_structure_item c ~last:last_item ?ext {ctx; ast= si} =
       let break (itmI, cI) (itmJ, cJ) =
         (not (List.is_empty itmI.pvb_attributes))
         || (not (List.is_empty itmJ.pvb_attributes))
-        || Ast.break_between c.source ~cmts:c.cmts
-             ~has_cmts_before:Cmts.has_before ~has_cmts_after:Cmts.has_after
-             (Vb itmI, cI.conf) (Vb itmJ, cJ.conf)
+        || break_between c (Vb itmI, cI.conf) (Vb itmJ, cJ.conf)
       in
       let grps = List.group bindings ~break in
       let fmt_grp ~first:first_grp ~last:last_grp bindings =
