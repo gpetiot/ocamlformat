@@ -3533,13 +3533,17 @@ and fmt_signature c ctx itms =
     | Psig_attribute atr -> update_config c [atr]
     | _ -> c
   in
-  let grps = make_groups c itms (fun x -> Sig x) update_config in
-  let fmt_grp (i, c) =
-    maybe_disabled c i.psig_loc []
-    @@ fun c -> fmt_signature_item c (sub_sig ~ctx i)
+  let items = update_items_config c itms update_config in
+  hvbox 0 @@ list_pn items
+  @@ fun ~prev (itm, c) ~next:_ ->
+  let big_break =
+    match prev with
+    | Some (i', c') -> break_between c (Sig i', c'.conf) (Sig itm, c.conf)
+    | None -> false
   in
-  let fmt_grp itms = list itms "@;<1000 0>" fmt_grp in
-  hvbox 0 (list grps "\n@;<1000 0>" fmt_grp)
+  opt prev (fun _ -> fmt_if big_break "\n" $ break 1000 0)
+  $ maybe_disabled c itm.psig_loc []
+    @@ fun c -> fmt_signature_item c (sub_sig ~ctx itm)
 
 and fmt_signature_item c ?ext {ast= si; _} =
   protect c (Sig si)
