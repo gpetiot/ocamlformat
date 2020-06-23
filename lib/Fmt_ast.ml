@@ -24,16 +24,20 @@ type c =
   ; debug: bool
   ; source: Source.t
   ; cmts: Cmts.t
-  ; fmt_code: Conf.t -> string -> (Fmt.t, unit) Result.t }
+  ; fmt_impl: Conf.t -> string -> (Fmt.t, unit) Result.t
+  ; fmt_topl: Conf.t -> string -> (Fmt.t, unit) Result.t }
 
 module Cmts = struct
   include Cmts
 
-  let fmt_before c = fmt_before c.cmts c.conf ~fmt_code:c.fmt_code
+  let fmt_before c =
+    fmt_before c.cmts c.conf ~fmt_impl:c.fmt_impl ~fmt_topl:c.fmt_topl
 
-  let fmt_within c = fmt_within c.cmts c.conf ~fmt_code:c.fmt_code
+  let fmt_within c =
+    fmt_within c.cmts c.conf ~fmt_impl:c.fmt_impl ~fmt_topl:c.fmt_topl
 
-  let fmt_after c = fmt_after c.cmts c.conf ~fmt_code:c.fmt_code
+  let fmt_after c =
+    fmt_after c.cmts c.conf ~fmt_impl:c.fmt_impl ~fmt_topl:c.fmt_topl
 
   let fmt c ?pro ?epi ?eol ?adj loc =
     (* remove the before comments from the map first *)
@@ -406,7 +410,8 @@ let fmt_parsed_docstring c ~loc ?pro ~epi str_cmt parsed =
   assert (not (String.is_empty str_cmt)) ;
   let fmt_parsed parsed =
     fmt_if (String.starts_with_whitespace str_cmt) " "
-    $ Fmt_odoc.fmt ~fmt_code:(c.fmt_code c.conf) parsed
+    $ Fmt_odoc.fmt ~fmt_impl:(c.fmt_impl c.conf)
+        ~fmt_topl:(c.fmt_topl c.conf) parsed
     $ fmt_if
         (String.length str_cmt > 1 && String.ends_with_whitespace str_cmt)
         " "
@@ -4555,14 +4560,14 @@ let fmt_toplevel c ctx itms =
 
 (** Entry points *)
 
-let fmt_file ~ctx ~f ~fmt_code ~debug source cmts conf itms =
-  let c = {source; cmts; conf; debug; fmt_code} in
+let fmt_file ~ctx ~f ~fmt_impl ~fmt_topl ~debug source cmts conf itms =
+  let c = {source; cmts; conf; debug; fmt_impl; fmt_topl} in
   match itms with
   | [] -> Cmts.fmt_after ~pro:noop c Location.none
   | l -> f c ctx l
 
 let fmt_code ~debug =
-  let rec fmt_code conf s =
+  let rec fmt_impl conf s =
     match
       Parse_with_comments.parse Migrate_ast.Parse.implementation conf
         ~source:s
@@ -4573,17 +4578,29 @@ let fmt_code ~debug =
         let ctx = Pld (PStr ast) in
         Ok
           (fmt_file ~f:fmt_structure ~ctx ~debug source cmts conf ast
-             ~fmt_code)
+             ~fmt_impl ~fmt_topl)
+    | exception _ -> Error ()
+  and fmt_topl conf s =
+    match
+      Parse_with_comments.parse Migrate_ast.Parse.use_file conf ~source:s
+    with
+    | {ast; comments; _} ->
+        let source = Source.create s in
+        let cmts = Cmts.init_toplevel ~debug source ast comments in
+        let ctx = Top in
+        Ok
+          (fmt_file ~f:fmt_toplevel ~ctx ~debug source cmts conf ast
+             ~fmt_impl ~fmt_topl)
     | exception _ -> Error ()
   in
-  fmt_code
+  (fmt_impl, fmt_topl)
 
 let entry_point ~f ~ctx ~debug source cmts conf l =
   (* [Ast.init] should be called only once per file. In particular, we don't
      want to call it when formatting comments *)
   Ast.init conf ;
-  let fmt_code = fmt_code ~debug in
-  fmt_file ~f ~ctx ~fmt_code ~debug source cmts conf l
+  let fmt_impl, fmt_topl = fmt_code ~debug in
+  fmt_file ~f ~ctx ~fmt_impl ~fmt_topl ~debug source cmts conf l
 
 let fmt_signature = entry_point ~f:fmt_signature ~ctx:Top
 

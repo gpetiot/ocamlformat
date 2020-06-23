@@ -10,7 +10,8 @@
 (**************************************************************************)
 
 val fmt :
-     fmt_code:(string -> (Fmt.t, unit) Result.t)
+     fmt_impl:(string -> (Fmt.t, unit) Result.t)
+  -> fmt_topl:(string -> (Fmt.t, unit) Result.t)
   -> Odoc_parser.Ast.docs
   -> Fmt.t
 

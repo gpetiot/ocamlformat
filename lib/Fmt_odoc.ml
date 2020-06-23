@@ -13,7 +13,9 @@ open Fmt
 open Odoc_parser.Ast
 module Location_ = Odoc_model.Location_
 
-type conf = {fmt_code: string -> (Fmt.t, unit) Result.t}
+type conf =
+  { fmt_impl: string -> (Fmt.t, unit) Result.t
+  ; fmt_topl: string -> (Fmt.t, unit) Result.t }
 
 (** Escape characters if they are not already escaped. [escapeworthy] should
     be [true] if the character should be escaped, [false] otherwise. *)
@@ -72,21 +74,20 @@ let toplevel_block =
   compile
   @@ seq
        [ rep space
-       ; char '#'
-       ; space
+       ; str "# "
        ; group (rep1 any)
        ; str ";;"
        ; rep space
        ; group (rep any) ]
 
-let fmt_toplevel_code ~fmt_code s =
+let fmt_toplevel_code ~fmt_topl s =
   let open Result.Monad_infix in
   let lines = String.split_lines s in
   let lines = List.map ~f:String.lstrip lines in
   let groups =
     List.group lines ~break:(fun _ x -> String.is_prefix x ~prefix:"# ")
   in
-  match List.map groups ~f:(String.concat ~sep:"\n") with
+  match List.map groups ~f:(String.concat ~sep:" ") with
   | [] -> Error ()
   | toplevel_blocks -> (
       let results =
@@ -95,7 +96,7 @@ let fmt_toplevel_code ~fmt_code s =
             | None -> Error ()
             | Some g -> (
                 let toplevel_phrase = Re.Group.get g 1 in
-                fmt_code toplevel_phrase
+                fmt_topl toplevel_phrase
                 >>| fun phrase ->
                 match Re.Group.get g 2 with
                 | "" -> str "# " $ phrase $ str ";;"
@@ -104,7 +105,7 @@ let fmt_toplevel_code ~fmt_code s =
                     let lines = List.map ~f:String.lstrip lines in
                     let output = list lines "@;<1 0>" str in
                     vbox 0 (str "# " $ phrase $ str ";;" $ break 1 0 $ output)
-                ) )
+                ))
       in
       match Result.all results with
       | Ok [phrase] -> Ok phrase
@@ -112,10 +113,10 @@ let fmt_toplevel_code ~fmt_code s =
       | Error _ -> Error () )
 
 let fmt_code_block conf s =
-  match conf.fmt_code s with
+  match conf.fmt_impl s with
   | Ok formatted -> hvbox 0 (wrap "{[@;<1 2>" "@ ]}" formatted)
   | Error () -> (
-    match fmt_toplevel_code ~fmt_code:conf.fmt_code s with
+    match fmt_toplevel_code ~fmt_topl:conf.fmt_topl s with
     | Ok formatted -> hvbox 0 (wrap "{[@;<1 2>" "@ ]}" formatted)
     | Error () ->
         let fmt_line ~first ~last:_ l =
@@ -303,8 +304,8 @@ let fmt_block_element c = function
   | #nestable_block_element as elm ->
       hovbox 0 (fmt_nestable_block_element c elm)
 
-let fmt ~fmt_code (docs : docs) =
-  vbox 0 (list_block_elem docs (fmt_block_element {fmt_code}))
+let fmt ~fmt_impl ~fmt_topl (docs : docs) =
+  vbox 0 (list_block_elem docs (fmt_block_element {fmt_impl; fmt_topl}))
 
 let diff c x y =
   let norm z =
