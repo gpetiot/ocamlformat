@@ -9,11 +9,17 @@ module type Annotated = sig
   val is_generated : t -> bool
 end
 
+module S = struct
+  let mk () = Location.mkloc "merlin.hole" !default_loc
+
+  let is_generated Location.{ txt; _ } = String.equal txt "merlin.hole"
+end
+
 module Ext = struct
-  let mk () = (Location.mkloc "merlin.hole" !default_loc, PStr [])
+  let mk () = (S.mk (), PStr [])
 
   let is_generated = function
-    | (({ txt = "merlin.hole"; _ }, PStr []) : extension) -> true
+    | ((s, PStr []) : extension) when S.is_generated s -> true
     | _ -> false
 end
 
@@ -31,11 +37,11 @@ end
 module Attr = struct
   type t = attribute
 
-  let mk () = Attr.mk { txt = "merlin.hole.gen"; loc = Location.none } (PStr [])
+  let mk () = Attr.mk (S.mk ()) (PStr [])
 
   let is_generated a =
-    match (a.attr_name.txt, a.attr_payload) with
-    | "merlin.hole.gen", PStr [] -> true
+    match a.attr_payload with
+    | PStr [] when S.is_generated a.attr_name -> true
     | _ -> false
 end
 
@@ -64,7 +70,7 @@ end
 module Mod_binding = struct
   type t = module_binding
 
-  let mk () = Mb.mk {txt= ""; loc= Location.none} (Mod_expr.mk ())
+  let mk () = Mb.mk (S.mk ()) (Mod_expr.mk ())
 
   let is_generated e = Mod_expr.is_generated e.pmb_expr
 end
@@ -94,7 +100,7 @@ end
 module Mod_type_decl = struct
   type t = module_type_declaration
 
-  let mk () = Mtd.mk {txt= ""; loc= Location.none} ~typ:(Mod_type.mk ())
+  let mk () = Mtd.mk (S.mk ()) ~typ:(Mod_type.mk ())
 
   let is_generated t =
     match t.pmtd_type with
