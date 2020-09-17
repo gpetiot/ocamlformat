@@ -49,3 +49,14 @@ module Class_exp = struct
     | Pcl_extension ext when Ext.is_generated ext -> true
     | _ -> false
 end
+
+module Mod_expr = struct
+  type t = module_expr
+
+  let mk () = Mod.extension (Ext.mk ())
+
+  let is_generated e =
+    match e.pmod_desc with
+    | Pmod_extension ext when Ext.is_generated ext -> true
+    | _ -> false
+end

@@ -1164,7 +1164,7 @@ functor_arg_name:
    which are resolved by precedence declarations. This is concise but fragile.
    Perhaps in the future an explicit stratification could be used. *)
 
-module_expr:
+module_expr [@recover.expr Annot.Mod_expr.mk ()]:
   | STRUCT attrs = attributes s = structure generated = END
       { let attrs =
           if generated then Annot.Attr.mk () :: attrs
@@ -1329,7 +1329,7 @@ structure_item:
 ;
 
 (* The body (right-hand side) of a module binding. *)
-module_binding_body:
+module_binding_body [@recover.expr Annot.Mod_expr.mk ()]:
     EQUAL me = module_expr
       { me }
   | mkmod(
