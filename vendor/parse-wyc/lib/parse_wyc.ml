@@ -152,6 +152,11 @@ let invalid_locs p m lexbuf =
         loc_list := Stack.top loc_stack :: !loc_list;
       default.module_expr m x
     in
+    let module_binding m x =
+      if Annot.Mod_binding.is_generated x then
+        loc_list := Stack.top loc_stack :: !loc_list;
+      default.module_binding m x
+    in
     let typ m x =
       if Annot.Core_type.is_generated x then
         loc_list := Stack.top loc_stack :: !loc_list;
@@ -179,6 +184,7 @@ let invalid_locs p m lexbuf =
       typ;
       class_expr;
       module_expr;
+      module_binding;
       structure_item;
       signature_item;
     }

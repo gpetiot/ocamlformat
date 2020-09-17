@@ -1348,7 +1348,7 @@ module_binding_body [@recover.expr Annot.Mod_expr.mk ()]:
 ;
 
 (* The first binding in a group of recursive module bindings. *)
-%inline rec_module_binding:
+rec_module_binding [@recover.expr (None, Annot.Mod_binding.mk ())]:
   MODULE
   ext = ext
   attrs1 = attributes
@@ -1366,7 +1366,7 @@ module_binding_body [@recover.expr Annot.Mod_expr.mk ()]:
 ;
 
 (* The following bindings in a group of recursive module bindings. *)
-%inline and_module_binding:
+and_module_binding [@recover.expr Annot.Mod_binding.mk ()]:
   AND
   attrs1 = attributes
   uid = mkrhs(UIDENT)

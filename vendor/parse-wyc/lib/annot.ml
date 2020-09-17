@@ -61,6 +61,14 @@ module Mod_expr = struct
     | _ -> false
 end
 
+module Mod_binding = struct
+  type t = module_binding
+
+  let mk () = Mb.mk {txt= ""; loc= Location.none} (Mod_expr.mk ())
+
+  let is_generated e = Mod_expr.is_generated e.pmb_expr
+end
+
 module Core_type = struct
   type t = core_type
 
