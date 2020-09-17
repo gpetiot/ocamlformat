@@ -409,10 +409,17 @@ let equal eq ~ignore_doc_comments c a b =
 let moved_docstrings f c a b =
   f c a.Parse_with_comments.ast b.Parse_with_comments.ast
 
+let recover x =
+  let y = Parse_wyc.Make_parsable.use_file x in
+  Stdio.print_endline "==================================";
+  Stdio.print_endline y;
+  Stdio.print_endline "==================================";
+  y
+
 (** Operations on implementation files. *)
 let impl : _ t =
   { parse= Migrate_ast.Parse.use_file
-  ; recover= Parse_wyc.Make_parsable.use_file
+  ; recover
   ; init_cmts= Cmts.init_toplevel
   ; fmt= Fmt_ast.fmt_toplevel
   ; equal= equal Normalize.equal_toplevel
