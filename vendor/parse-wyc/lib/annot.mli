@@ -19,3 +19,7 @@ module Mod_expr : Annotated with type t = module_expr
 module Mod_binding : Annotated with type t = module_binding
 
 module Core_type : Annotated with type t = core_type
+
+module Mod_type : Annotated with type t = module_type
+
+module Mod_type_decl : Annotated with type t = module_type_declaration

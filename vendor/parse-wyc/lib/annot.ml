@@ -79,3 +79,25 @@ module Core_type = struct
     | Ptyp_extension ext when Ext.is_generated ext -> true
     | _ -> false
 end
+
+module Mod_type = struct
+  type t = module_type
+
+  let mk () = Mty.extension (Ext.mk ())
+
+  let is_generated t =
+    match t.pmty_desc with
+    | Pmty_extension ext when Ext.is_generated ext -> true
+    | _ -> false
+end
+
+module Mod_type_decl = struct
+  type t = module_type_declaration
+
+  let mk () = Mtd.mk {txt= ""; loc= Location.none} ~typ:(Mod_type.mk ())
+
+  let is_generated t =
+    match t.pmtd_type with
+    | Some ty when Mod_type.is_generated ty -> true
+    | _ -> false
+end

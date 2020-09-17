@@ -83,7 +83,7 @@ let keyword_table =
     "to", TO;
     "true", TRUE;
     "try", TRY;
-    "type", TYPE;
+    "type", TYPE false;
     "val", VAL;
     "virtual", VIRTUAL;
     "when", WHEN;

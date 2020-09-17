@@ -690,7 +690,7 @@ let mk_directive ~loc name arg =
 %token TO
 %token TRUE
 %token TRY
-%token TYPE
+%token <bool> TYPE [@recover.expr true]
 %token <string> UIDENT
   [@recover.expr "<invalid-uident>"]
 %token UNDERSCORE
@@ -1402,8 +1402,9 @@ and_module_binding [@recover.expr Annot.Mod_binding.mk ()]:
 ;
 
 (* A module type declaration. *)
-module_type_declaration:
-  MODULE TYPE
+module_type_declaration [@recover.expr (Annot.Mod_type_decl.mk (), None)]:
+  MODULE
+  generated = TYPE
   ext = ext
   attrs1 = attributes
   id = mkrhs(ident)
@@ -1411,6 +1412,10 @@ module_type_declaration:
   attrs2 = post_item_attributes
   {
     let attrs = attrs1 @ attrs2 in
+    let attrs =
+      if generated then Annot.Attr.mk () :: attrs
+      else attrs
+    in
     let loc = make_loc $sloc in
     let docs = symbol_docs $sloc in
     Mtd.mk id ?typ ~attrs ~loc ~docs, ext
@@ -1461,7 +1466,7 @@ open_description:
 
 /* Module types */
 
-module_type:
+module_type [@recover.expr Annot.Mod_type.mk ()]:
   | SIG attrs = attributes s = signature generated = END
       { let attrs =
           if generated then Annot.Attr.mk () :: attrs
