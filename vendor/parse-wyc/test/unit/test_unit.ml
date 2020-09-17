@@ -229,6 +229,12 @@ let f = function
 module M = struct
   type t = T
 |} in
+  let module_sig = {|
+module M_bad : sig
+end
+
+type t = x
+|} in
   [
     ("empty", "", []);
     ("valid", valid_test, []);
@@ -297,6 +303,7 @@ module M = struct
     ("unclosed simple pattern", unclosed_simple_pattern, [ ((2, 0), (34, 2)) ]);
 *)
     ("unclosed struct", unclosed_struct, [ ((2, 0), (3, 12)) ]);
+    ("module sig", module_sig, []);
   ]
 
 let intf_tests =
