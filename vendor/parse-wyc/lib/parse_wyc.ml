@@ -152,6 +152,11 @@ let invalid_locs p m lexbuf =
         loc_list := Stack.top loc_stack :: !loc_list;
       default.module_expr m x
     in
+    let typ m x =
+      if Annot.Core_type.is_generated x then
+        loc_list := Stack.top loc_stack :: !loc_list;
+      default.typ m x
+    in
     let wrap mapper loc f x =
       if Stack.is_empty loc_stack then (
         Stack.push loc loc_stack;
@@ -171,6 +176,7 @@ let invalid_locs p m lexbuf =
       Ast_mapper.default_mapper with
       attribute;
       expr;
+      typ;
       class_expr;
       module_expr;
       structure_item;

@@ -15,3 +15,5 @@ module Attr : Annotated with type t = attribute
 module Class_exp : Annotated with type t = class_expr
 
 module Mod_expr : Annotated with type t = module_expr
+
+module Core_type : Annotated with type t = core_type

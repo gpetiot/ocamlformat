@@ -60,3 +60,14 @@ module Mod_expr = struct
     | Pmod_extension ext when Ext.is_generated ext -> true
     | _ -> false
 end
+
+module Core_type = struct
+  type t = core_type
+
+  let mk () = Typ.extension (Ext.mk ())
+
+  let is_generated t =
+    match t.ptyp_desc with
+    | Ptyp_extension ext when Ext.is_generated ext -> true
+    | _ -> false
+end

@@ -3145,7 +3145,7 @@ possibly_poly(X):
 
 (* A core type (core_type) is a core type without attributes (core_type_no_attr)
    followed with a list of attributes. *)
-core_type:
+core_type [@recover.expr Annot.Core_type.mk ()]:
     core_type_no_attr
       { $1 }
   | core_type attribute
@@ -3225,7 +3225,7 @@ tuple_type:
    - applications of type constructors:   int, int list, int option list
    - variant types:                       [`A]
  *)
-atomic_type:
+atomic_type [@recover.expr Annot.Core_type.mk ()]:
   | LPAREN core_type RPAREN
       { $2 }
   | LPAREN MODULE ext_attributes package_type RPAREN
