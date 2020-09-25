@@ -188,21 +188,6 @@ let update_items_config c items update_config =
   let _, items = List.fold_map items ~init:c ~f:with_config in
   items
 
-let make_groups c items ast update_config =
-  let items = update_items_config c items update_config in
-  let break (i1, c1) (i2, c2) =
-    break_between c (ast i1, c1.conf) (ast i2, c2.conf)
-  in
-  List.group items ~break
-
-let fmt_groups c ctx grps fmt_grp =
-  let break_struct = c.conf.break_struct || is_top ctx in
-  list_fl grps (fun ~first ~last grp ->
-      fmt_if (break_struct && not first) "\n@;<1000 0>"
-      $ fmt_if ((not break_struct) && not first) "@;<1000 0>"
-      $ fmt_grp ~first ~last grp
-      $ fits_breaks_if ((not break_struct) && not last) "" "\n" )
-
 let value_binding_op_rec first rec_flag =
   match (first, rec_flag) with
   | true, Recursive -> ("let", true)
@@ -4116,9 +4101,9 @@ and fmt_structure c ctx itms =
   in
   opt prev (fun _ ->
       fmt_or_k big_break (fmt "\n@;<1000 0>")
-        (fmt_or break_struct "@;<1000 0>" "@ "))
+        (fmt_or break_struct "@;<1000 0>" "@ ") )
   $ maybe_disabled c itm.pstr_loc [] (fun c ->
-        fmt_structure_item c ~last:(Option.is_none next) (sub_str ~ctx itm))
+        fmt_structure_item c ~last:(Option.is_none next) (sub_str ~ctx itm) )
 
 and fmt_type c ?ext ?eq rec_flag decls ctx =
   let fmt_decl ~first ~last decl =
@@ -4511,7 +4496,11 @@ let fmt_toplevel c ctx itms =
     | `Item {pstr_desc= Pstr_attribute atr; _} -> update_config c [atr]
     | _ -> c
   in
-  let grps = make_groups c itms (fun x -> Tli x) update_config in
+  let items = update_items_config c itms update_config in
+  let break (i1, c1) (i2, c2) =
+    break_between c (Tli i1, c1.conf) (Tli i2, c2.conf)
+  in
+  let grps = List.group items ~break in
   let break_struct = c.conf.break_struct || is_top ctx in
   let fmt_item c ~last = function
     | `Item i ->
@@ -4519,13 +4508,12 @@ let fmt_toplevel c ctx itms =
         @@ fun c -> fmt_structure_item c ~last (sub_str ~ctx i)
     | `Directive d -> fmt_toplevel_directive c d
   in
-  let fmt_grp ~first:_ ~last:last_grp itms =
-    list_fl itms (fun ~first ~last (itm, c) ->
-        let last = last && last_grp in
+  hvbox 0 @@ list_fl grps
+  @@ fun ~first:first_grp ~last:last_grp grp ->
+  fmt_if (not first_grp) "\n@;<1000 0>"
+  $ list_fl grp (fun ~first ~last (itm, c) ->
         fmt_if_k (not first) (fmt_or break_struct "@\n" "@ ")
-        $ fmt_item c ~last itm )
-  in
-  hvbox 0 (fmt_groups c ctx grps fmt_grp)
+        $ fmt_item c ~last:(last && last_grp) itm )
 
 (** Entry points *)
 
