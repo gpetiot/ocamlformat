@@ -4105,16 +4105,20 @@ and fmt_structure c ctx itms =
     | Pstr_attribute atr -> update_config c [atr]
     | _ -> c
   in
-  let grps = make_groups c itms (fun x -> Str x) update_config in
+  let items = update_items_config c itms update_config in
   let break_struct = c.conf.break_struct || is_top ctx in
-  let fmt_grp ~first:_ ~last:last_grp itms =
-    list_fl itms (fun ~first ~last (itm, c) ->
-        let last = last && last_grp in
-        fmt_if_k (not first) (fmt_or break_struct "@\n" "@ ")
-        $ maybe_disabled c itm.pstr_loc []
-          @@ fun c -> fmt_structure_item c ~last (sub_str ~ctx itm) )
+  hvbox 0 @@ list_pn items
+  @@ fun ~prev (itm, c) ~next ->
+  let big_break =
+    match prev with
+    | Some (i_p, c_p) -> break_between c (Str i_p, c_p.conf) (Str itm, c.conf)
+    | None -> false
   in
-  hvbox 0 (fmt_groups c ctx grps fmt_grp)
+  opt prev (fun _ ->
+      fmt_or_k big_break (fmt "\n@;<1000 0>")
+        (fmt_or break_struct "@;<1000 0>" "@ "))
+  $ maybe_disabled c itm.pstr_loc [] (fun c ->
+        fmt_structure_item c ~last:(Option.is_none next) (sub_str ~ctx itm))
 
 and fmt_type c ?ext ?eq rec_flag decls ctx =
   let fmt_decl ~first ~last decl =
