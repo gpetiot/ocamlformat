@@ -116,6 +116,10 @@ val doc_atrs :
   -> attributes
   -> (string Location.loc * bool) list option * attributes
 
+module Structure_item : sig
+  val attributes : structure_item -> attributes
+end
+
 module Mod : sig
   val is_simple : module_expr -> bool
 end
