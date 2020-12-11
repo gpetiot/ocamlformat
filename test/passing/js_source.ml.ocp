@@ -135,21 +135,13 @@ class x =
 class type t =
   object
     inherit t [@@foo]
-
     val x : t [@@foo]
-
     val mutable x : t [@@foo]
-
     method x : t [@@foo]
-
     method private x : t [@@foo]
-
     constraint t = t' [@@foo]
-
     [@@@abc]
-
     [%%id]
-
     [@@@aaa]
   end[@foo]
 
@@ -257,7 +249,6 @@ class type castable =
 class type foo_t =
   object
     inherit castable
-
     method foo : string
   end
 
@@ -278,7 +269,6 @@ class foo : foo_t =
 class type bar_t =
   object
     inherit foo
-
     method bar : string
   end
 
@@ -3858,9 +3848,7 @@ let ( !! ) = Lazy.force
 class type ['a, 'b] ops =
   object
     method free : x:'b -> ?y:'c -> Names.t
-
     method subst : sub:'a Subst.t -> 'b -> 'a
-
     method eval : 'b -> 'a
   end
 
@@ -4107,9 +4095,7 @@ let ( !! ) = Lazy.force
 class type ['a, 'b] ops =
   object
     method free : 'b -> Names.t
-
     method subst : sub:'a Subst.t -> 'b -> 'a
-
     method eval : 'b -> 'a
   end
 
@@ -6258,28 +6244,19 @@ exception Out_of_range
 class type ['a] cursor =
   object
     method get : 'a
-
     method incr : unit -> unit
-
     method is_last : bool
   end
 
 class type ['a] storage =
   object ('self)
     method first : 'a cursor
-
     method len : int
-
     method nth : int -> 'a cursor
-
     method copy : 'self
-
     method sub : int -> int -> 'self
-
     method concat : 'a storage -> 'self
-
     method fold : 'b. ('a -> int -> 'b -> 'b) -> 'b -> 'b
-
     method iter : ('a -> unit) -> unit
   end
 
@@ -6317,16 +6294,13 @@ class virtual ['a, 'cursor] storage_base =
 class type ['a] obj_input_channel =
   object
     method get : unit -> 'a
-
     method close : unit -> unit
   end
 
 class type ['a] obj_output_channel =
   object
     method put : 'a -> unit
-
     method flush : unit -> unit
-
     method close : unit -> unit
   end
 
