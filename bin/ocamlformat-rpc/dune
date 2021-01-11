@@ -9,29 +9,21 @@
 ;                                                                        ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(env
- (release
-  (flags
-   (:standard -noassert))))
+(executable
+ (name main)
+ (public_name ocamlformat-rpc)
+ (package ocamlformat-rpc)
+ (flags
+  (:standard -open Base -open Import))
+ ;;INSERT_BISECT_HERE;;
+ (libraries ocamlformat_lib rpc))
 
 (rule
  (with-stdout-to
-  ocamlformat-help.actual
-  (run ocamlformat --help=plain)))
+  ocamlformat-rpc.1
+  (run ./main.exe --help=groff)))
 
-(rule
- (alias runtest)
- (action
-  (diff ocamlformat-help.txt ocamlformat-help.actual)))
-
-(rule
- (with-stdout-to
-  ocamlformat-rpc-help.actual
-  (run ocamlformat-rpc --help=plain)))
-
-(rule
- (alias runtest)
- (action
-  (diff ocamlformat-rpc-help.txt ocamlformat-rpc-help.actual)))
-
-(data_only_dirs test-extra)
+(install
+ (section man)
+ (files ocamlformat-rpc.1)
+ (package ocamlformat-rpc))

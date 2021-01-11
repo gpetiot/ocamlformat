@@ -1,2 +1,2 @@
 (cram
- (deps %{bin:ocamlformat}))
+ (deps %{bin:ocamlformat} %{bin:ocamlformat-rpc}))

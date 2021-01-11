@@ -41,6 +41,10 @@
 
   + Consistent positioning of lambda return type annotations when no-break-infix-before-func and pre/post extensions (#1581, @gpetiot)
 
+#### New features
+
+  + Expose a RPC interface through a new binary ocamlformat-rpc (#1586, @gpetiot)
+
 ### 0.16.0 (2020-11-16)
 
 #### Removed

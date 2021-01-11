@@ -10,9 +10,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (executable
+ (name main)
  (public_name ocamlformat)
  (package ocamlformat)
- (modules ocamlformat)
+ (modules main)
  (flags
   (:standard -open Base -open Import))
  ;;INSERT_BISECT_HERE;;
@@ -21,7 +22,7 @@
 (rule
  (with-stdout-to
   ocamlformat.1
-  (run ./ocamlformat.exe --help=groff)))
+  (run ./main.exe --help=groff)))
 
 (install
  (section man)

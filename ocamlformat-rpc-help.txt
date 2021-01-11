@@ -1,0 +1,32 @@
+NAME
+       ocamlformat-rpc - RPC mode for OCamlFormat, a tool to format OCaml
+       code.
+
+SYNOPSIS
+       ocamlformat-rpc [OPTION]... 
+
+DESCRIPTION
+       ocamlformat-rpc listens to RPC requests, provided on the standard
+       input, and prints the response on the standard output.
+
+COMMANDS
+       The supported RPC commands are:
+
+       halt
+
+       halt closes the connection to the RPC.
+
+       format-type CSEXP
+
+       format-type submits a canonical s-expression CSEXP to be formatted by
+       OCamlFormat.
+
+OPTIONS
+       --help[=FMT] (default=auto)
+           Show this help in format FMT. The value FMT must be one of `auto',
+           `pager', `groff' or `plain'. With `auto', the format is `pager` or
+           `plain' whenever the TERM env var is `dumb' or undefined.
+
+       --version
+           Show version information.
+

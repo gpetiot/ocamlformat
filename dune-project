@@ -73,3 +73,50 @@
    (>= 10.0.0))
   (uutf
    (>= 1.0.1))))
+
+(package
+ (name ocamlformat-rpc)
+ (synopsis "Auto-formatter for OCaml code (RPC mode)")
+ (description
+   "OCamlFormat is a tool to automatically format OCaml code in a uniform style. This package defines a RPC interface to OCamlFormat")
+ (depends
+  (ocaml
+   (and
+    (>= 4.08)
+    (< 4.13)))
+  (ocaml
+   (and
+    :with-test
+    (< 4.12)))
+  ocaml-version
+  (alcotest :with-test)
+  (base
+   (and
+    (>= v0.12.0)
+    (< v0.15)))
+  base-unix
+  cmdliner
+  csexp
+  dune-build-info
+  fix
+  fpath
+  (menhir
+   (>= 20180528))
+  (menhirLib
+   (>= 20200624))
+  (menhirSdk
+   (>= 20200624))
+  (ocaml-migrate-parsetree
+   (>= 2.1.0))
+  (ocp-indent :with-test)
+  (odoc
+   (>= 1.4.2))
+  (ppxlib
+   (>= 0.18.0))
+  re
+  (stdio
+   (< v0.15))
+  (uuseg
+   (>= 10.0.0))
+  (uutf
+   (>= 1.0.1))))

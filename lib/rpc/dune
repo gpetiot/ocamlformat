@@ -1,0 +1,5 @@
+(library
+ (name rpc)
+ (flags
+  (:standard -open Base -open Import -open Compat))
+ (libraries compat csexp import))
