@@ -81,6 +81,8 @@ type t =
   ; wrap_comments: bool  (** Wrap comments at margin. *)
   ; wrap_fun_args: bool }
 
+val default_profile : t
+
 type file = Stdin | File of string
 
 type kind = Kind : _ list Migrate_ast.Traverse.fragment -> kind
@@ -109,5 +111,16 @@ val action : unit -> (action * opts) Cmdliner.Term.result
 val update : ?quiet:bool -> t -> Migrate_ast.Parsetree.attribute -> t
 (** [update ?quiet c a] updates configuration [c] after reading attribute
     [a]. [quiet] is false by default. *)
+
+val update_value :
+     t
+  -> name:string
+  -> value:string
+  -> ( t
+     , [ `Bad_value of string * string
+       | `Malformed of string
+       | `Misplaced of string * string
+       | `Unknown of string * string ] )
+     Result.t
 
 val print_config : t -> unit

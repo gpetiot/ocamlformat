@@ -22,6 +22,8 @@ module Parsetree = struct
 
   let equal_toplevel_phrase : toplevel_phrase -> toplevel_phrase -> bool =
     Poly.equal
+
+  let equal_module_type : module_type -> module_type -> bool = Poly.equal
 end
 
 module Asttypes = struct
@@ -41,18 +43,24 @@ module Traverse = struct
     | Structure : Parsetree.structure fragment
     | Signature : Parsetree.signature fragment
     | Use_file : Parsetree.toplevel_phrase list fragment
+    | Core_type : Parsetree.core_type fragment
+    | Module_type : Parsetree.module_type fragment
 
   let equal (type a) (x : a fragment) : a -> a -> bool =
     match x with
     | Structure -> Parsetree.equal_structure
     | Signature -> Parsetree.equal_signature
     | Use_file -> List.equal Parsetree.equal_toplevel_phrase
+    | Core_type -> Parsetree.equal_core_type
+    | Module_type -> Parsetree.equal_module_type
 
   let map (type a) (x : a fragment) (m : Ppxlib.Ast_traverse.map) : a -> a =
     match x with
     | Structure -> m#structure
     | Signature -> m#signature
     | Use_file -> m#list m#toplevel_phrase
+    | Core_type -> m#core_type
+    | Module_type -> m#module_type
 
   let iter (type a) (fragment : a fragment) (i : Ppxlib.Ast_traverse.iter) :
       a -> unit =
@@ -60,6 +68,8 @@ module Traverse = struct
     | Structure -> i#structure
     | Signature -> i#signature
     | Use_file -> i#list i#toplevel_phrase
+    | Core_type -> i#core_type
+    | Module_type -> i#module_type
 
   let fold (type a) (fragment : a fragment) (f : _ Ppxlib.Ast_traverse.fold)
       : a -> _ =
@@ -67,6 +77,8 @@ module Traverse = struct
     | Structure -> f#structure
     | Signature -> f#signature
     | Use_file -> f#list f#toplevel_phrase
+    | Core_type -> f#core_type
+    | Module_type -> f#module_type
 end
 
 module Parse = struct
@@ -81,11 +93,27 @@ module Parse = struct
         | Ptop_def [] -> false
         | Ptop_def (_ :: _) | Ptop_dir _ -> true )
 
+  let core_type = Ppxlib_ast.Parse.core_type
+
+  let module_type (lx : Lexing.lexbuf) =
+    let pre = "module X : " in
+    let lex_buffer_len = lx.lex_buffer_len + String.length pre in
+    let input = Bytes.to_string lx.lex_buffer in
+    let lex_buffer = Bytes.of_string (pre ^ input) in
+    let lx = {lx with lex_buffer; lex_buffer_len} in
+    match interface lx with
+    | Parsetree.[{psig_desc= Psig_module {pmd_type; _}; _}] -> pmd_type
+    | _ ->
+        failwith
+          (Format.sprintf "Syntax error: %s is not a module type" input)
+
   let fragment (type a) (fragment : a Traverse.fragment) lexbuf : a =
     match fragment with
     | Traverse.Structure -> implementation lexbuf
     | Traverse.Signature -> interface lexbuf
     | Traverse.Use_file -> use_file lexbuf
+    | Traverse.Core_type -> core_type lexbuf
+    | Traverse.Module_type -> module_type lexbuf
 
   let parser_version = Ocaml_version.sys_version
 end
@@ -105,10 +133,16 @@ module Printast = struct
 
   let use_file ppf x = pp_sexp ppf (List.sexp_of_t sexp_of#toplevel_phrase x)
 
+  let core_type ppf x = pp_sexp ppf (sexp_of#core_type x)
+
+  let module_type ppf x = pp_sexp ppf (sexp_of#module_type x)
+
   let fragment (type a) : a Traverse.fragment -> _ -> a -> _ = function
     | Traverse.Structure -> implementation
     | Traverse.Signature -> interface
     | Traverse.Use_file -> use_file
+    | Traverse.Core_type -> core_type
+    | Traverse.Module_type -> module_type
 end
 
 module Pprintast = Ppxlib.Pprintast

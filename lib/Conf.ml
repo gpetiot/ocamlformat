@@ -1538,6 +1538,8 @@ let conventional_profile =
   ; wrap_comments= C.default Formatting.wrap_comments
   ; wrap_fun_args= C.default Formatting.wrap_fun_args }
 
+let default_profile = conventional_profile
+
 let compact_profile =
   { ocamlformat_profile with
     break_before_in= `Auto
@@ -1674,7 +1676,7 @@ let (_profile : t option C.t) =
       , "The $(b,conventional) profile aims to be as familiar and \
          \"conventional\" appearing as the available options allow." )
     ; ( "default"
-      , Some conventional_profile
+      , Some default_profile
       , "$(b,default) is an alias for the $(b,conventional) profile." )
     ; ( "compact"
       , Some compact_profile
@@ -2230,5 +2232,8 @@ let update ?(quiet = false) c {attr_name= {txt; loc}; attr_payload; _} =
       let w = Warnings.Attribute_payload (txt, error) in
       if (not c.quiet) && not quiet then print_warning loc w ;
       c
+
+let update_value config ~name ~value =
+  C.update ~config ~from:`Commandline ~name ~value ~inline:false
 
 let print_config = C.print_config

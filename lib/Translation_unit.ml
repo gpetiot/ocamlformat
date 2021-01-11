@@ -26,12 +26,6 @@ exception
 
 let internal_error msg kvs = raise (Internal_error (msg, kvs))
 
-type error =
-  | Invalid_source of {exn: exn}
-  | Unstable of {iteration: int; prev: string; next: string}
-  | Ocamlformat_bug of {exn: exn}
-  | User_error of string
-
 let ellipsis n msg =
   let msg = String.strip msg in
   if n > 0 && String.length msg > (n * 2) + 10 then
@@ -39,6 +33,159 @@ let ellipsis n msg =
   else msg
 
 let ellipsis_cmt = ellipsis 50
+
+module Error = struct
+  type t =
+    | Invalid_source of {exn: exn}
+    | Unstable of {iteration: int; prev: string; next: string}
+    | Ocamlformat_bug of {exn: exn}
+    | User_error of string
+
+  let equal = Poly.( = )
+
+  let pp fs = function
+    | Invalid_source {exn} ->
+        Format.fprintf fs "Invalid_source(%a)" Exn.pp exn
+    | Unstable {iteration; prev; next} ->
+        Format.fprintf fs "Unstable(%i,%S,%S)" iteration prev next
+    | Ocamlformat_bug {exn} ->
+        Format.fprintf fs "Ocamlformat_bug(%a)" Exn.pp exn
+    | User_error s -> Format.fprintf fs "User_error(%S)" s
+
+  let print ~fmt ~exe ~debug ~quiet ~input_name error =
+    match error with
+    | Invalid_source _ when quiet -> ()
+    | Invalid_source {exn} -> (
+        let reason =
+          match exn with
+          | Syntaxerr.Error _ | Lexer.Error _ -> " (syntax error)"
+          | Warning50 _ -> " (misplaced documentation comments - warning 50)"
+          | _ -> ""
+        in
+        Format.fprintf fmt "%s: ignoring %S%s\n%!" exe input_name reason ;
+        match exn with
+        | Syntaxerr.Error _ | Lexer.Error _ ->
+            Location.report_exception fmt exn
+        | Warning50 l ->
+            List.iter l ~f:(fun (l, w) -> print_warning l w) ;
+            Format.fprintf fmt
+              "@{<warning>Hint@}: (Warning 50) This file contains a \
+               documentation comment (** ... *) that the OCaml compiler \
+               does not know how to attach to the AST. OCamlformat does not \
+               support these cases. You can find more information at: \
+               https://github.com/ocaml-ppx/ocamlformat#overview. If you'd \
+               like to disable this check and let ocamlformat make a choice \
+               (though it might not be consistent with the ocaml compilers \
+               and odoc), you can set the --no-comment-check option.\n\
+               %!"
+        | exn -> Format.fprintf fmt "%s\n%!" (Exn.to_string exn) )
+    | Unstable {iteration; prev; next} ->
+        if debug then (
+          let ext = Filename.extension input_name in
+          let input_name =
+            Filename.chop_extension (Filename.basename input_name)
+          in
+          let p =
+            Filename.temp_file input_name (Printf.sprintf ".prev%s" ext)
+          in
+          Out_channel.write_all p ~data:prev ;
+          let n =
+            Filename.temp_file input_name (Printf.sprintf ".next%s" ext)
+          in
+          Out_channel.write_all n ~data:next ;
+          ignore (Unix.system (Printf.sprintf "diff %S %S 1>&2" p n)) ;
+          Unix.unlink p ;
+          Unix.unlink n ) ;
+        if iteration <= 1 then
+          Format.fprintf fmt
+            "%s: %S was not already formatted. ([max-iters = 1])\n%!" exe
+            input_name
+        else (
+          Format.fprintf fmt
+            "%s: Cannot process %S.\n\
+            \  Please report this bug at \
+             https://github.com/ocaml-ppx/ocamlformat/issues.\n\
+             %!"
+            exe input_name ;
+          Format.fprintf fmt
+            "  BUG: formatting did not stabilize after %i iterations.\n%!"
+            iteration )
+    | User_error msg -> Format.fprintf fmt "%s: %s.\n%!" exe msg
+    | Ocamlformat_bug {exn} -> (
+        Format.fprintf fmt
+          "%s: Cannot process %S.\n\
+          \  Please report this bug at \
+           https://github.com/ocaml-ppx/ocamlformat/issues.\n\
+           %!"
+          exe input_name ;
+        match exn with
+        | Internal_error (m, l) ->
+            let s =
+              match m with
+              | `Cannot_parse _ -> "generating invalid ocaml syntax"
+              | `Ast_changed -> "ast changed"
+              | `Doc_comment _ -> "doc comments changed"
+              | `Comment -> "comments changed"
+              | `Comment_dropped _ -> "comments dropped"
+              | `Warning50 _ -> "misplaced documentation comments"
+            in
+            Format.fprintf fmt "  BUG: %s.\n%!" s ;
+            ( match m with
+            | `Doc_comment l when not quiet ->
+                List.iter l ~f:(function
+                  | Normalize.Moved (loc_before, loc_after, msg) ->
+                      if Location.compare loc_before Location.none = 0 then
+                        Format.fprintf fmt
+                          "%!@{<loc>%a@}:@,\
+                           @{<error>Error@}: Docstring (** %s *) added.\n\
+                           %!"
+                          Location.print loc_after (ellipsis_cmt msg)
+                      else if Location.compare loc_after Location.none = 0
+                      then
+                        Format.fprintf fmt
+                          "%!@{<loc>%a@}:@,\
+                           @{<error>Error@}: Docstring (** %s *) dropped.\n\
+                           %!"
+                          Location.print loc_before (ellipsis_cmt msg)
+                      else
+                        Format.fprintf fmt
+                          "%!@{<loc>%a@}:@,\
+                           @{<error>Error@}: Docstring (** %s *) moved to \
+                           @{<loc>%a@}.\n\
+                           %!"
+                          Location.print loc_before (ellipsis_cmt msg)
+                          Location.print loc_after
+                  | Normalize.Unstable (loc, s) ->
+                      Format.fprintf fmt
+                        "%!@{<loc>%a@}:@,\
+                         @{<error>Error@}: Formatting of (** %s *) is \
+                         unstable (e.g. parses as a list or not depending \
+                         on the margin), please tighten up this comment in \
+                         the source or disable the formatting using the \
+                         option --no-parse-docstrings.\n\
+                         %!"
+                        Location.print loc (ellipsis_cmt s) )
+            | `Comment_dropped l when not quiet ->
+                List.iter l ~f:(fun Cmt.{txt= msg; loc} ->
+                    Format.fprintf fmt
+                      "%!@{<loc>%a@}:@,\
+                       @{<error>Error@}: Comment (* %s *) dropped.\n\
+                       %!"
+                      Location.print loc (ellipsis_cmt msg) )
+            | `Cannot_parse ((Syntaxerr.Error _ | Lexer.Error _) as exn) ->
+                if debug then Location.report_exception fmt exn
+            | `Warning50 l ->
+                if debug then
+                  List.iter l ~f:(fun (l, w) -> print_warning l w)
+            | _ -> () ) ;
+            if debug then
+              List.iter l ~f:(fun (msg, sexp) ->
+                  Format.fprintf fmt "  %s: %s\n%!" msg (Sexp.to_string sexp) )
+        | exn ->
+            Format.fprintf fmt
+              "  BUG: unhandled exception. Use [--debug] for details.\n%!" ;
+            if debug then Format.fprintf fmt "%s\n%!" (Exn.to_string exn) )
+end
 
 let with_file input_name output_file suf ext f =
   let dir =
@@ -60,138 +207,6 @@ let dump_formatted ~input_name ?output_file ~suffix fmted =
   let ext = Filename.extension input_name in
   with_file input_name output_file suffix ext (fun oc ->
       Out_channel.output_string oc fmted )
-
-let print_error ~fmt ~exe ~debug ~quiet ~input_name error =
-  match error with
-  | Invalid_source _ when quiet -> ()
-  | Invalid_source {exn} -> (
-      let reason =
-        match exn with
-        | Syntaxerr.Error _ | Lexer.Error _ -> " (syntax error)"
-        | Warning50 _ -> " (misplaced documentation comments - warning 50)"
-        | _ -> ""
-      in
-      Format.fprintf fmt "%s: ignoring %S%s\n%!" exe input_name reason ;
-      match exn with
-      | Syntaxerr.Error _ | Lexer.Error _ ->
-          Location.report_exception fmt exn
-      | Warning50 l ->
-          List.iter l ~f:(fun (l, w) -> print_warning l w) ;
-          Format.fprintf fmt
-            "@{<warning>Hint@}: (Warning 50) This file contains a \
-             documentation comment (** ... *) that the OCaml compiler does \
-             not know how to attach to the AST. OCamlformat does not \
-             support these cases. You can find more information at: \
-             https://github.com/ocaml-ppx/ocamlformat#overview. If you'd \
-             like to disable this check and let ocamlformat make a choice \
-             (though it might not be consistent with the ocaml compilers \
-             and odoc), you can set the --no-comment-check option.\n\
-             %!"
-      | exn -> Format.fprintf fmt "%s\n%!" (Exn.to_string exn) )
-  | Unstable {iteration; prev; next} ->
-      if debug then (
-        let ext = Filename.extension input_name in
-        let input_name =
-          Filename.chop_extension (Filename.basename input_name)
-        in
-        let p =
-          Filename.temp_file input_name (Printf.sprintf ".prev%s" ext)
-        in
-        Out_channel.write_all p ~data:prev ;
-        let n =
-          Filename.temp_file input_name (Printf.sprintf ".next%s" ext)
-        in
-        Out_channel.write_all n ~data:next ;
-        ignore (Unix.system (Printf.sprintf "diff %S %S 1>&2" p n)) ;
-        Unix.unlink p ;
-        Unix.unlink n ) ;
-      if iteration <= 1 then
-        Format.fprintf fmt
-          "%s: %S was not already formatted. ([max-iters = 1])\n%!" exe
-          input_name
-      else (
-        Format.fprintf fmt
-          "%s: Cannot process %S.\n\
-          \  Please report this bug at \
-           https://github.com/ocaml-ppx/ocamlformat/issues.\n\
-           %!"
-          exe input_name ;
-        Format.fprintf fmt
-          "  BUG: formatting did not stabilize after %i iterations.\n%!"
-          iteration )
-  | User_error msg -> Format.fprintf fmt "%s: %s.\n%!" exe msg
-  | Ocamlformat_bug {exn} -> (
-      Format.fprintf fmt
-        "%s: Cannot process %S.\n\
-        \  Please report this bug at \
-         https://github.com/ocaml-ppx/ocamlformat/issues.\n\
-         %!"
-        exe input_name ;
-      match exn with
-      | Internal_error (m, l) ->
-          let s =
-            match m with
-            | `Cannot_parse _ -> "generating invalid ocaml syntax"
-            | `Ast_changed -> "ast changed"
-            | `Doc_comment _ -> "doc comments changed"
-            | `Comment -> "comments changed"
-            | `Comment_dropped _ -> "comments dropped"
-            | `Warning50 _ -> "misplaced documentation comments"
-          in
-          Format.fprintf fmt "  BUG: %s.\n%!" s ;
-          ( match m with
-          | `Doc_comment l when not quiet ->
-              List.iter l ~f:(function
-                | Normalize.Moved (loc_before, loc_after, msg) ->
-                    if Location.compare loc_before Location.none = 0 then
-                      Format.fprintf fmt
-                        "%!@{<loc>%a@}:@,\
-                         @{<error>Error@}: Docstring (** %s *) added.\n\
-                         %!"
-                        Location.print loc_after (ellipsis_cmt msg)
-                    else if Location.compare loc_after Location.none = 0 then
-                      Format.fprintf fmt
-                        "%!@{<loc>%a@}:@,\
-                         @{<error>Error@}: Docstring (** %s *) dropped.\n\
-                         %!"
-                        Location.print loc_before (ellipsis_cmt msg)
-                    else
-                      Format.fprintf fmt
-                        "%!@{<loc>%a@}:@,\
-                         @{<error>Error@}: Docstring (** %s *) moved to \
-                         @{<loc>%a@}.\n\
-                         %!"
-                        Location.print loc_before (ellipsis_cmt msg)
-                        Location.print loc_after
-                | Normalize.Unstable (loc, s) ->
-                    Format.fprintf fmt
-                      "%!@{<loc>%a@}:@,\
-                       @{<error>Error@}: Formatting of (** %s *) is \
-                       unstable (e.g. parses as a list or not depending on \
-                       the margin), please tighten up this comment in the \
-                       source or disable the formatting using the option \
-                       --no-parse-docstrings.\n\
-                       %!"
-                      Location.print loc (ellipsis_cmt s) )
-          | `Comment_dropped l when not quiet ->
-              List.iter l ~f:(fun Cmt.{txt= msg; loc} ->
-                  Format.fprintf fmt
-                    "%!@{<loc>%a@}:@,\
-                     @{<error>Error@}: Comment (* %s *) dropped.\n\
-                     %!"
-                    Location.print loc (ellipsis_cmt msg) )
-          | `Cannot_parse ((Syntaxerr.Error _ | Lexer.Error _) as exn) ->
-              if debug then Location.report_exception fmt exn
-          | `Warning50 l ->
-              if debug then List.iter l ~f:(fun (l, w) -> print_warning l w)
-          | _ -> () ) ;
-          if debug then
-            List.iter l ~f:(fun (msg, sexp) ->
-                Format.fprintf fmt "  %s: %s\n%!" msg (Sexp.to_string sexp) )
-      | exn ->
-          Format.fprintf fmt
-            "  BUG: unhandled exception. Use [--debug] for details.\n%!" ;
-          if debug then Format.fprintf fmt "%s\n%!" (Exn.to_string exn) )
 
 let check_all_locations fmt cmts_t =
   match Cmts.remaining_locs cmts_t with
@@ -230,6 +245,8 @@ let recover (type a) : a Traverse.fragment -> _ = function
   | Traverse.Structure -> Parse_wyc.Make_parsable.structure
   | Traverse.Signature -> Parse_wyc.Make_parsable.signature
   | Traverse.Use_file -> Parse_wyc.Make_parsable.use_file
+  | Traverse.Core_type -> failwith "no recovery for core_type"
+  | Traverse.Module_type -> failwith "no recovery for module_type"
 
 let format fragment ?output_file ~input_name ~prev_source ~parsed conf opts =
   let open Result.Monad_infix in
@@ -286,7 +303,7 @@ let format fragment ?output_file ~input_name ~prev_source ~parsed conf opts =
                Option.map f_opt ~f:(fun f -> (s, String.sexp_of_t f)) )
       in
       ( match parse fragment conf ~source:fmted with
-      | exception Sys_error msg -> Error (User_error msg)
+      | exception Sys_error msg -> Error (Error.User_error msg)
       | exception Warning50 l -> internal_error (`Warning50 l) (exn_args ())
       | exception exn ->
           if opts.Conf.format_invalid_files then (
@@ -381,12 +398,12 @@ let parse_result fragment conf (opts : Conf.opts) ~source ~input_name =
   | exception exn ->
       if opts.format_invalid_files then (
         match parse fragment conf ~source:(recover fragment source) with
-        | exception exn -> Error (Invalid_source {exn})
+        | exception exn -> Error (Error.Invalid_source {exn})
         | parsed ->
             Format.fprintf Format.err_formatter
               "Warning: %s is invalid, recovering.\n%!" input_name ;
             Ok parsed )
-      else Error (Invalid_source {exn})
+      else Error (Error.Invalid_source {exn})
   | parsed -> Ok parsed
 
 let parse_and_format fragment ?output_file ~input_name ~source conf opts =

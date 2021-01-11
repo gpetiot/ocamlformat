@@ -98,6 +98,8 @@ module Traverse : sig
     | Structure : Parsetree.structure fragment
     | Signature : Parsetree.signature fragment
     | Use_file : Parsetree.toplevel_phrase list fragment
+    | Core_type : Parsetree.core_type fragment
+    | Module_type : Parsetree.module_type fragment
 
   val equal : 'a fragment -> 'a -> 'a -> bool
 

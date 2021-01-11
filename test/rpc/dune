@@ -1,0 +1,7 @@
+(test
+ (name rpc_test)
+ (libraries csexp ocamlformat-rpc-lib sexplib0 spawn)
+ (deps %{bin:ocamlformat-rpc})
+ (package ocamlformat-rpc)
+ (action
+  (run %{test} %{bin:ocamlformat-rpc})))

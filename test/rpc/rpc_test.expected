@@ -1,0 +1,110 @@
+Starting then doing nothing
+[ocf] proposed version v1
+[ocf] server accepted version v1
+Sent Halt
+Sending Type requests
+Format 'char -> string'
+[ocf] proposed version v1
+[ocf] server accepted version v1
+Sent (Format"char -> string")
+Output: char -> string
+
+Format 'int -> int'
+Sent (Format"int -> int")
+Output: int -> int
+
+Format ' int    (* foo *) 
+
+ ->     int  (* bar *)'
+Sent (Format" int    (* foo *) \n\n ->     int  (* bar *)")
+Output: int (* foo *) -> int (* bar *)
+
+Sent (Config((foo bar)))
+Error: Unknown configuration value (foo, bar)
+Sent (Config((margin 10)))
+Output: configuration updated
+Format 'aaa -> bbb -> ccc -> ddd -> eee -> fff -> ggg'
+Sent (Format"aaa -> bbb -> ccc -> ddd -> eee -> fff -> ggg")
+Output: aaa ->
+bbb ->
+ccc ->
+ddd ->
+eee ->
+fff ->
+ggg
+
+Sent (Config((margin 80)))
+Output: configuration updated
+Format 'aaa -> bbb -> ccc -> ddd -> eee -> fff -> ggg'
+Sent (Format"aaa -> bbb -> ccc -> ddd -> eee -> fff -> ggg")
+Output: aaa -> bbb -> ccc -> ddd -> eee -> fff -> ggg
+
+Format 'val x :
+ 
+int'
+Sent (Format"val x :\n \nint")
+Output: val x : int
+
+Format 'sig end'
+Sent (Format"sig end")
+Output: sig end
+
+Format 'sig
+
+ val x : foo -> bar
+  (** this does something *)
+
+ val f : a -> b -> c ->
+
+ d     end'
+Sent (Format"sig\n\n val x : foo -> bar\n  (** this does something *)\n\n val f : a -> b -> c ->\n\n d     end")
+Output:
+sig
+  val x : foo -> bar
+  (** this does something *)
+
+  val f : a -> b -> c -> d
+end
+
+Format '
+let ssmap
+    :  (module MapT
+          with type key = string
+           and type data = string
+           and type map = SSMap.map )
+    -> unit
+  =
+  ()
+'
+Sent (Format"\nlet ssmap\n    :  (module MapT\n          with type key = string\n           and type data = string\n           and type map = SSMap.map )\n    -> unit\n  =\n  ()\n")
+Output:
+let ssmap :
+    (module MapT
+       with type key = string
+        and type data = string
+        and type map = SSMap.map) ->
+    unit =
+  ()
+
+Sent (Config((profile janestreet)))
+Output: configuration updated
+Format '
+let ssmap
+    :  (module MapT
+          with type key = string
+           and type data = string
+           and type map = SSMap.map )
+    -> unit
+  =
+  ()
+'
+Sent (Format"\nlet ssmap\n    :  (module MapT\n          with type key = string\n           and type data = string\n           and type map = SSMap.map )\n    -> unit\n  =\n  ()\n")
+Output:
+let ssmap
+    :  (module MapT with type key = string and type data = string and type map = SSMap.map)
+    -> unit
+  =
+  ()
+;;
+
+Sent Halt

@@ -9,32 +9,24 @@
 (*                                                                        *)
 (**************************************************************************)
 
-module Error : sig
+module type V = sig
   type t
 
-  val equal : t -> t -> bool
+  val read_input : Stdlib.in_channel -> t
 
-  val pp : Format.formatter -> t -> unit
+  val to_sexp : t -> Sexplib0.Sexp.t
 
-  val print :
-       fmt:Format.formatter
-    -> exe:string
-    -> debug:bool
-    -> quiet:bool
-    -> input_name:string
-    -> t
-    -> unit
-  (** [print conf ?fmt ~input_name e] prints the error message corresponding
-      to error [e] on the [fmt] formatter (stderr by default). *)
+  val output : Stdlib.out_channel -> t -> unit
 end
 
-val parse_and_format :
-     _ Migrate_ast.Traverse.fragment
-  -> ?output_file:string
-  -> input_name:string
-  -> source:string
-  -> Conf.t
-  -> Conf.opts
-  -> (string, Error.t) Result.t
-(** [parse_and_format conf ?output_file ~input_name ~source] parses and
-    formats [source] as a list of fragments. *)
+(** Version used to set the protocol version *)
+module Init : V with type t = [`Halt | `Unknown | `Version of string]
+
+module V1 :
+  V
+    with type t =
+          [ `Halt
+          | `Unknown
+          | `Error of string
+          | `Config of (string * string) list
+          | `Format of string ]

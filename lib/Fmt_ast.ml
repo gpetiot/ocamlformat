@@ -4549,14 +4549,21 @@ let fmt_toplevel c ctx itms =
 
 (** Entry points *)
 
-let fmt_file (type a) ~ctx ~fmt_code ~debug
-    (fragment : a list Traverse.fragment) source cmts conf (itms : a list) =
+let fmt_file (type a) ~ctx ~fmt_code ~debug (fragment : a Traverse.fragment)
+    source cmts conf (itms : a) =
   let c = {source; cmts; conf; debug; fmt_code} in
   match (fragment, itms) with
-  | _, [] -> Cmts.fmt_after ~pro:noop c Location.none
+  | Traverse.Structure, [] | Traverse.Signature, [] | Traverse.Use_file, []
+    ->
+      Cmts.fmt_after ~pro:noop c Location.none
   | Traverse.Structure, l -> fmt_structure c ctx l
   | Traverse.Signature, l -> fmt_signature c ctx l
   | Traverse.Use_file, l -> fmt_toplevel c ctx l
+  | Traverse.Core_type, ty ->
+      fmt_core_type c (sub_typ ~ctx:(Pld (PTyp ty)) ty)
+  | Traverse.Module_type, mty ->
+      compose_module ~f:Fn.id
+        (fmt_module_type c (sub_mty ~ctx:(Mty mty) mty))
 
 let fmt_code ~debug =
   let rec fmt_code conf s =
