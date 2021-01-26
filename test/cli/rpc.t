@@ -13,8 +13,9 @@ Sending an Halt command:
 Sending several Format_type commands:
 
   $ ocamlformat-rpc <<EOF
-  > (11:Format_type3:int)
-  > (11:Format_type3:int)
-  > (11:Format_type3:int)
+  > (11:Format_type12:type t = int)
+  > (11:Format_type16:type t=(int*int))
+  > (11:Format_type57:type t = a (* a *) -> b (* b *) -> c (* c *) -> d (* d *))
   > 4:Halt
   > EOF
+  type t = int

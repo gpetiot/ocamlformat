@@ -14,9 +14,6 @@
 open Ocamlformat_lib
 
 ;;
-ignore Fmt_ast.fmt_fragment
-
-;;
 Caml.at_exit (Format.pp_print_flush Format.err_formatter)
 
 ;;
@@ -25,7 +22,28 @@ Caml.at_exit (Format_.pp_print_flush Format_.err_formatter)
 let rec rpc_main () =
   match Rpc.V1.Commands.read_input stdin with
   | Halt -> Ok ()
-  | Format_type ty -> ignore ty ; rpc_main ()
+  | Format_type ty ->
+      let input_name = "<rpc input>" in
+      let conf =
+        Conf.build_config
+        (* we want to format the type no matter what, so even if there isn't
+           an .ocamlformat file *)
+          ~enable_outside_detected_project:true
+          ~root:(Some (Fpath.cwd ()))
+          ~file:input_name ~is_stdin:true
+      in
+      let opts =
+        Conf.{debug= false; margin_check= false; format_invalid_files= false}
+      in
+      ( match
+          Translation_unit.parse_and_format Signature ~input_name ~source:ty
+            conf opts
+        with
+      | Ok formatted ->
+          Out_channel.output_string stdout formatted ;
+          Out_channel.flush stdout
+      | Error _ -> () ) ;
+      rpc_main ()
   | Unknown -> rpc_main ()
 
 open Cmdliner

@@ -19,7 +19,7 @@ val parse_and_format :
   -> Conf.t
   -> Conf.opts
   -> (string, error) Result.t
-(** [parse_and_format_impl conf ?output_file ~input_name ~source] parses and
+(** [parse_and_format conf ?output_file ~input_name ~source] parses and
     formats [source] as a list of fragments. *)
 
 val print_error :
