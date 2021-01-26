@@ -40,7 +40,8 @@ let rec rpc_main () =
             conf opts
         with
       | Ok formatted ->
-          Out_channel.output_string stdout formatted ;
+          let answer = Rpc.V1.Commands.(to_sexp (Format_type formatted)) in
+          Out_channel.output_string stdout (Sexp.to_string answer) ;
           Out_channel.flush stdout
       | Error _ -> () ) ;
       rpc_main ()

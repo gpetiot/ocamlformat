@@ -18,4 +18,4 @@ Sending several Format_type commands:
   > (11:Format_type57:type t = a (* a *) -> b (* b *) -> c (* c *) -> d (* d *))
   > 4:Halt
   > EOF
-  type t = int
+  (Format_type"type t = int\n")

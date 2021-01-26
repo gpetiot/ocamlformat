@@ -14,5 +14,7 @@ module V1 : sig
     type t = Format_type of string | Halt | Unknown
 
     val read_input : In_channel.t -> t
+
+    val to_sexp : t -> Sexp.t
   end
 end

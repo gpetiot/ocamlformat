@@ -22,5 +22,11 @@ module V1 = struct
       | Ok (Atom "Halt") -> Halt
       | Ok _ -> Unknown
       | Error _msg -> Halt
+
+    let to_sexp =
+      let open Sexp in
+      function
+      | Format_type typ -> List [Atom "Format_type"; Atom typ]
+      | _ -> assert false
   end
 end
