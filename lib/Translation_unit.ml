@@ -419,6 +419,46 @@ let check_range nlines (low, high) =
   if low <= high then Ok ()
   else Error (User_error (Format.sprintf "Invalid range %i-%i." low high))
 
+let filter (type a) (fragment : a list Traverse.fragment) (ast : a list)
+    ~range:(low, high) : a list =
+  let filter (loc_begin : Location.t) (loc_end : Location.t) =
+    loc_begin.loc_start.pos_lnum <= low && high <= loc_end.loc_end.pos_lnum
+  in
+  let fold =
+    match fragment with
+    | Structure ->
+        object
+          inherit [a list] Ppxlib.Ast_traverse.fold
+
+          method! structure_item s acc =
+            if filter s.pstr_loc s.pstr_loc then s :: acc else acc
+        end
+    | Signature ->
+        object
+          inherit [a list] Ppxlib.Ast_traverse.fold
+
+          method! signature_item s acc =
+            if filter s.psig_loc s.psig_loc then s :: acc else acc
+        end
+    | Use_file ->
+        object
+          inherit [a list] Ppxlib.Ast_traverse.fold
+
+          method! toplevel_phrase s acc =
+            match s with
+            | Ptop_def d -> (
+              match d with
+              | [] -> acc
+              | first :: _ as defs ->
+                  let last = List.last_exn defs in
+                  if filter first.pstr_loc last.pstr_loc then s :: acc
+                  else acc )
+            | Ptop_dir d ->
+                if filter d.pdir_loc d.pdir_loc then s :: acc else acc
+        end
+  in
+  Migrate_ast.Traverse.fold fragment fold ast [] |> List.rev
+
 let indentation fragment ~input_name ~source ~range:(low, high) conf opts =
   let lines = String.split_lines source in
   let nlines = List.length lines in
@@ -428,6 +468,9 @@ let indentation fragment ~input_name ~source ~range:(low, high) conf opts =
   match
     force_parse_quiet fragment ~source conf
     >>= fun parsed ->
+    (* todo: sync the source with the filtered ast *)
+    let filtered_ast = filter fragment parsed.ast ~range:(low, high) in
+    let _ = {parsed with ast= filtered_ast} in
     format fragment ~input_name ~prev_source:source ~parsed conf opts
     >>= fun formatted_source ->
     force_parse_quiet fragment ~source:formatted_source conf
