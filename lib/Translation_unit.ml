@@ -459,6 +459,51 @@ let filter (type a) (fragment : a list Traverse.fragment) (ast : a list)
   in
   Migrate_ast.Traverse.fold fragment fold ast [] |> List.rev
 
+let slice_source (type a) (fragment : a list Traverse.fragment) ast src
+    ~range:(low, high) =
+  let filter (loc_begin : Location.t) (loc_end : Location.t) =
+    loc_begin.loc_start.pos_lnum + 1 <= low
+    && high <= loc_end.loc_end.pos_lnum + 1
+  in
+  let fold =
+    object
+      inherit [Position.t list] Ppxlib.Ast_traverse.fold
+
+      method! structure_item s acc =
+        if filter s.pstr_loc s.pstr_loc then
+          s.pstr_loc.loc_end :: s.pstr_loc.loc_start :: acc
+        else acc
+
+      method! signature_item s acc =
+        if filter s.psig_loc s.psig_loc then
+          s.psig_loc.loc_end :: s.psig_loc.loc_start :: acc
+        else acc
+
+      method! toplevel_phrase s acc =
+        match s with
+        | Ptop_def d -> (
+          match d with
+          | [] -> acc
+          | first :: _ as defs ->
+              let last = List.last_exn defs in
+              if filter first.pstr_loc last.pstr_loc then
+                last.pstr_loc.loc_end :: first.pstr_loc.loc_start :: acc
+              else acc )
+        | Ptop_dir d ->
+            if filter d.pdir_loc d.pdir_loc then
+              d.pdir_loc.loc_end :: d.pdir_loc.loc_start :: acc
+            else acc
+    end
+  in
+  let locs = Migrate_ast.Traverse.fold fragment fold ast [] |> List.rev in
+  match locs with
+  | [] -> ""
+  | locs ->
+      let locs = List.stable_sort locs ~compare:Position.compare in
+      let from = (List.hd_exn locs).pos_cnum in
+      let to_ = (List.last_exn locs).pos_cnum in
+      String.sub src ~pos:from ~len:(to_ - from)
+
 let indentation fragment ~input_name ~source ~range:(low, high) conf opts =
   let lines = String.split_lines source in
   let nlines = List.length lines in
@@ -468,9 +513,11 @@ let indentation fragment ~input_name ~source ~range:(low, high) conf opts =
   match
     force_parse_quiet fragment ~source conf
     >>= fun parsed ->
-    (* todo: sync the source with the filtered ast *)
     let filtered_ast = filter fragment parsed.ast ~range:(low, high) in
-    let _ = {parsed with ast= filtered_ast} in
+    let source =
+      slice_source fragment parsed.ast ~range:(low, high) source
+    in
+    let parsed = {parsed with ast= filtered_ast} in
     format fragment ~input_name ~prev_source:source ~parsed conf opts
     >>= fun formatted_source ->
     force_parse_quiet fragment ~source:formatted_source conf
