@@ -9,12 +9,15 @@
 (*                                                                        *)
 (**************************************************************************)
 
-module V1 : sig
-  module Commands : sig
-    type t = Format_type of string | Halt | Unknown
+module type V = sig
+  type t
 
-    val read_input : In_channel.t -> t
+  val read_input : In_channel.t -> t
 
-    val to_sexp : t -> Sexp.t
-  end
+  val to_sexp : t -> Sexp.t
 end
+
+(** Version used to set the protocol version *)
+module Init : V with type t = [`Halt | `Unknown | `Version of string]
+
+module V1 : V with type t = [`Halt | `Unknown | `Format_type of string]
