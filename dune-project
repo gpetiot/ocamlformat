@@ -89,6 +89,7 @@
     :with-test
     (< 4.12)))
   ocaml-version
+  ocamlformat-rpc-lib
   (alcotest :with-test)
   (base
    (and
@@ -120,3 +121,14 @@
    (>= 10.0.0))
   (uutf
    (>= 1.0.1))))
+
+(package
+ (name ocamlformat-rpc-lib)
+ (synopsis "Auto-formatter for OCaml code (RPC mode)")
+ (description
+   "OCamlFormat is a tool to automatically format OCaml code in a uniform style. This package defines a RPC interface to OCamlFormat")
+ (depends
+  ocaml
+  csexp
+  (stdio
+   (< v0.15))))

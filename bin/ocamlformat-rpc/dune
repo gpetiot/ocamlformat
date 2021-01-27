@@ -16,7 +16,7 @@
  (flags
   (:standard -open Base -open Import))
  ;;INSERT_BISECT_HERE;;
- (libraries ocamlformat_lib rpc))
+ (libraries ocamlformat_lib ocamlformat-rpc-lib))
 
 (rule
  (with-stdout-to

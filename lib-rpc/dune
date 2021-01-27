@@ -1,0 +1,6 @@
+(library
+ (name ocamlformat_rpc_lib)
+ (public_name ocamlformat-rpc-lib)
+ (flags
+  (:standard -open Base -open Stdio))
+ (libraries base csexp stdio))

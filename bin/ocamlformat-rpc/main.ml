@@ -12,6 +12,7 @@
 (** OCamlFormat-RPC *)
 
 open Ocamlformat_lib
+module Rpc = Ocamlformat_rpc_lib.V1.Commands
 
 ;;
 Caml.at_exit (Format.pp_print_flush Format.err_formatter)
@@ -20,7 +21,7 @@ Caml.at_exit (Format.pp_print_flush Format.err_formatter)
 Caml.at_exit (Format_.pp_print_flush Format_.err_formatter)
 
 let rec rpc_main () =
-  match Rpc.V1.Commands.read_input stdin with
+  match Rpc.read_input stdin with
   | Halt -> Ok ()
   | Format_type ty ->
       let input_name = "<rpc input>" in
@@ -40,7 +41,7 @@ let rec rpc_main () =
             conf opts
         with
       | Ok formatted ->
-          let answer = Rpc.V1.Commands.(to_sexp (Format_type formatted)) in
+          let answer = Rpc.(to_sexp (Format_type formatted)) in
           Out_channel.output_string stdout (Sexp.to_string answer) ;
           Out_channel.flush stdout
       | Error _ -> () ) ;
