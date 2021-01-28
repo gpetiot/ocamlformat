@@ -25,7 +25,9 @@ type state = Waiting_for_version | Version_defined of version
 
 let version_handled = function "v1" | "V1" -> Some V1 | _ -> None
 
-let propose_another_version _ = None
+let propose_another_version = function
+  | "v1" | "V1" -> None
+  | _ -> Some ("v1", V1)
 
 let rec rpc_main = function
   | Waiting_for_version -> (
