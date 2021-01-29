@@ -13,14 +13,15 @@ type error
 
 val parse_and_format :
      _ list Migrate_ast.Traverse.fragment
+  -> ?format_invalid_files:bool
   -> ?output_file:string
   -> input_name:string
   -> source:string
   -> Conf.t
   -> Conf.opts
   -> (string, error) Result.t
-(** [parse_and_format_impl conf ?output_file ~input_name ~source] parses and
-    formats [source] as a list of fragments. *)
+(** [parse_and_format fg ~input_name ~source conf opts] parses and formats
+    [source] as a list of [fg] fragments. *)
 
 val print_error :
      fmt:Format.formatter
