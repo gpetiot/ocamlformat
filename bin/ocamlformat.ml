@@ -83,6 +83,16 @@ let run_action action opts =
       in
       Result.combine_errors_unit (List.map inputs ~f)
   | Print_config conf -> Conf.print_config conf ; Ok ()
+  | Numeric ({kind= Conf.Kind k; file; name= input_name; conf}, range) -> (
+      let source = source_from_file file in
+      match
+        Translation_unit.numeric k ~input_name ~source ~range conf opts
+      with
+      | Ok indents ->
+          List.iter indents ~f:(fun i ->
+              Stdio.print_endline (Int.to_string i) ) ;
+          Ok ()
+      | Error e -> Error [(fun () -> print_error conf opts ~input_name e)] )
 
 ;;
 match Conf.action () with

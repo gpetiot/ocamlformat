@@ -81,6 +81,8 @@ type t =
   ; wrap_comments: bool  (** Wrap comments at margin. *)
   ; wrap_fun_args: bool }
 
+val default_profile : t
+
 type file = Stdin | File of string
 
 type kind = Kind : _ list Migrate_ast.Traverse.fragment -> kind
@@ -95,6 +97,7 @@ type action =
   | Check of input list
       (** Check whether the input files already are formatted. *)
   | Print_config of t  (** Print the configuration and exit. *)
+  | Numeric of input * (int * int)
 
 (** Options changing the tool's behavior *)
 type opts =

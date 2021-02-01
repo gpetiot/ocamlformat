@@ -1284,6 +1284,20 @@ let name =
   mk ~default
     Arg.(value & opt (some string) default & info ["name"] ~doc ~docs ~docv)
 
+let numeric =
+  let doc =
+    "Instead of re-indenting the file, output one integer per line \
+     representing the indentation value, printing as many values as lines \
+     in the range between lines X and Y (included)."
+  in
+  let default = None in
+  let docv = "X-Y" in
+  mk ~default
+    Arg.(
+      value
+      & opt (some (pair ~sep:'-' int int)) default
+      & info ["numeric"] ~doc ~docs ~docv)
+
 let ocp_indent_options =
   let unsupported ocp_indent = (ocp_indent, ([], "")) in
   let alias ocp_indent ocamlformat =
@@ -1520,6 +1534,8 @@ let conventional_profile =
   ; type_decl_indent= C.default Formatting.type_decl_indent
   ; wrap_comments= C.default Formatting.wrap_comments
   ; wrap_fun_args= C.default Formatting.wrap_fun_args }
+
+let default_profile = conventional_profile
 
 let compact_profile =
   { ocamlformat_profile with
@@ -2074,7 +2090,8 @@ let validate_action () =
       [ Option.map ~f:(fun o -> (`Output o, "--output")) !output
       ; Option.some_if !inplace (`Inplace, "--inplace")
       ; Option.some_if !check (`Check, "--check")
-      ; Option.some_if !print_config (`Print_config, "--print-config") ]
+      ; Option.some_if !print_config (`Print_config, "--print-config")
+      ; Option.map ~f:(fun r -> (`Numeric r, "--numeric")) !numeric ]
   with
   | [] -> Ok `No_action
   | [(action, _)] -> Ok action
@@ -2088,6 +2105,7 @@ type action =
   | Inplace of input list
   | Check of input list
   | Print_config of t
+  | Numeric of input * (int * int)
 
 let make_action ~enable_outside_detected_project ~root action inputs =
   let make_file ?(with_conf = fun c -> c) ?name kind file =
@@ -2121,9 +2139,9 @@ let make_action ~enable_outside_detected_project ~root action inputs =
         build_config ~enable_outside_detected_project ~root ~file ~is_stdin
       in
       Ok (Print_config conf)
-  | (`No_action | `Output _ | `Inplace | `Check), `No_input ->
+  | (`No_action | `Output _ | `Inplace | `Check | `Numeric _), `No_input ->
       Error "Must specify at least one input file, or `-` for stdin"
-  | (`No_action | `Output _), `Several_files _ ->
+  | (`No_action | `Output _ | `Numeric _), `Several_files _ ->
       Error
         "Must specify exactly one input file without --inplace or --check"
   | `Inplace, `Stdin _ ->
@@ -2148,6 +2166,10 @@ let make_action ~enable_outside_detected_project ~root action inputs =
       in
       Ok (Check (List.map files ~f))
   | `Check, `Stdin (name, kind) -> Ok (Check [make_stdin ?name kind])
+  | `Numeric (low, high), `Stdin (name, kind) ->
+      Ok (Numeric (make_stdin ?name kind, (low, high)))
+  | `Numeric (low, high), `Single_file (kind, name, f) ->
+      Ok (Numeric (make_file ?name kind f, (low, high)))
 
 type opts = {debug: bool; margin_check: bool}
 

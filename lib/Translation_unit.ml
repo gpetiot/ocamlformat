@@ -374,3 +374,13 @@ let parse_and_format fragment ?output_file ~input_name ~source conf opts =
   >>= fun parsed ->
   format fragment ?output_file ~input_name ~prev_source:source ~parsed conf
     opts
+
+let numeric fragment ~input_name ~source ~range:(low, high) conf opts =
+  ignore fragment ;
+  ignore input_name ;
+  ignore source ;
+  ignore low ;
+  ignore high ;
+  ignore conf ;
+  ignore opts ;
+  Error (Ocamlformat_bug {exn= failwith "not implemented"})
