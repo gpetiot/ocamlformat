@@ -13,6 +13,7 @@
 
 open Migrate_ast
 open Parse_with_comments
+open Result.Monad_infix
 
 exception
   Internal_error of
@@ -369,18 +370,31 @@ let parse_result fragment conf ~source =
 
 let parse_and_format fragment ?output_file ~input_name ~source conf opts =
   Ocaml_common.Location.input_name := input_name ;
-  let open Result.Monad_infix in
   parse_result fragment conf ~source
   >>= fun parsed ->
   format fragment ?output_file ~input_name ~prev_source:source ~parsed conf
     opts
 
+let check_line nlines i =
+  (* the last line of the buffer (nlines + 1) should not raise an error *)
+  if 1 <= i && i <= nlines + 1 then Ok ()
+  else Error (User_error (Format.sprintf "Invalid line number %i." i))
+
+let check_range nlines (low, high) =
+  check_line nlines low
+  >>= fun () ->
+  check_line nlines high
+  >>= fun () ->
+  if low <= high then Ok ()
+  else Error (User_error (Format.sprintf "Invalid range %i-%i." low high))
+
 let numeric fragment ~input_name ~source ~range:(low, high) conf opts =
+  let lines = String.split_lines source in
+  let nlines = List.length lines in
+  check_range nlines (low, high)
+  >>= fun () ->
   ignore fragment ;
   ignore input_name ;
-  ignore source ;
-  ignore low ;
-  ignore high ;
   ignore conf ;
   ignore opts ;
   Error (Ocamlformat_bug {exn= failwith "not implemented"})
