@@ -114,7 +114,9 @@ let tests =
   [ ("Location", Test_location.tests)
   ; ("non overlapping interval tree", Test_noit.tests)
   ; ("Ast", Test_ast.tests)
+  ; ("Cmt_lexer", Test_cmt_lexer.tests)
   ; ("Literal_lexer", Test_literal_lexer.tests)
-  ; ("Fmt", Test_fmt.tests) ]
+  ; ("Fmt", Test_fmt.tests)
+  ; ("Slicer", Test_slicer.tests) ]
 
 let () = Alcotest.run "ocamlformat" tests
