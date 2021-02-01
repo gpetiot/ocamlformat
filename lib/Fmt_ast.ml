@@ -497,7 +497,6 @@ let fmt_quoted_string key ext s = function
 
 let rec fmt_extension c ctx key (ext, pld) =
   match (key, ext.txt, pld, ctx) with
-  | _, "invalid.ast.node", _, _ -> assert false
   (* Quoted extensions (since ocaml 4.11). *)
   | ( ("%" | "%%")
     , ext
@@ -530,31 +529,6 @@ let rec fmt_extension c ctx key (ext, pld) =
     when Source.extension_using_sugar ~name:ext ~payload:ppat_loc ->
       fmt_pattern c ~ext (sub_pat ~ctx pat)
   | _ -> fmt_attribute_or_extension c key (ext, pld)
-
-and fmt_invalid_or_extension c ctx key (ext, pld) loc =
-  match (key, ext.txt, pld) with
-  (* invalid nodes are printed as verbatim *)
-  | ( "%%"
-    , "invalid.ast.node"
-    , PStr
-        [ { pstr_desc=
-              Pstr_eval
-                ({pexp_desc= Pexp_constant (Pconst_string (s, _, _)); _}, [])
-          ; _ } ] ) ->
-      let semisemi =
-        match
-          Source.find_token_after c.source
-            ~filter:(function COMMENT _ | DOCSTRING _ -> false | _ -> true)
-            loc.Location.loc_end
-        with
-        | Some (Token_latest.SEMISEMI, loc_semi) ->
-            if loc.loc_end.pos_lnum = loc_semi.loc_start.pos_lnum then
-              str ";;"
-            else fmt "@;<1000 0>;;"
-        | _ -> noop
-      in
-      str s $ semisemi
-  | _ -> fmt_extension c ctx key (ext, pld)
 
 and fmt_attribute_or_extension c key (pre, pld) =
   wrap "[" "]"
@@ -2927,7 +2901,7 @@ and fmt_class_field c ctx (cf : class_field) =
         let doc, atrs = doc_atrs [atr] in
         fmt_docstring c ~standalone:true ~epi:noop doc
         $ fmt_attributes c ~key:"@@@" atrs
-    | Pcf_extension ext -> fmt_invalid_or_extension c ctx "%%" ext pcf_loc
+    | Pcf_extension ext -> fmt_extension c ctx "%%" ext
   in
   fmt_cmts (hvbox 0 (doc_before $ pcf $ fmt_atrs $ doc_after))
 
@@ -2970,8 +2944,7 @@ and fmt_class_type_field c ctx (cf : class_type_field) =
             let doc, atrs = doc_atrs [atr] in
             fmt_docstring c ~standalone:true ~epi:noop doc
             $ fmt_attributes c ~key:"@@@" atrs
-        | Pctf_extension ext ->
-            fmt_invalid_or_extension c ctx "%%" ext pctf_loc )
+        | Pctf_extension ext -> fmt_extension c ctx "%%" ext )
     $ fmt_atrs $ doc_after )
 
 and fmt_cases c ctx cs =
@@ -3595,8 +3568,7 @@ and fmt_signature_item c ?ext {ast= si; _} =
       in
       hvbox_if box c.conf.stritem_extension_indent
         ( doc_before
-        $ hvbox_if (not box) 0
-            (fmt_invalid_or_extension c ctx "%%" ext si.psig_loc)
+        $ hvbox_if (not box) 0 (fmt_extension c ctx "%%" ext)
         $ fmt_attributes c ~pre:(Break (1, 0)) ~key:"@@" atrs
         $ doc_after )
   | Psig_include {pincl_mod; pincl_attributes; pincl_loc} ->
@@ -4259,8 +4231,7 @@ and fmt_structure_item c ~last:last_item ?ext {ctx; ast= si} =
       in
       hvbox_if box c.conf.stritem_extension_indent ~name:"ext1"
         ( doc_before
-        $ hvbox_if (not box) 0 ~name:"ext2"
-            (fmt_invalid_or_extension c ctx "%%" ext si.pstr_loc)
+        $ hvbox_if (not box) 0 ~name:"ext2" (fmt_extension c ctx "%%" ext)
         $ fmt_attributes c ~pre:Space ~key:"@@" atrs
         $ doc_after )
   | Pstr_class_type cl ->
