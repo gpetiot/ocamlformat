@@ -29,7 +29,7 @@ val numeric :
   -> range:int * int
   -> Conf.t
   -> Conf.opts
-  -> (int list, error) Result.t
+  -> (int list, [`Msg of string]) Result.t
 (** [numeric ~input_name ~source ~range conf opts] returns the indentation of
     the range of lines [range] (line numbers ranging from 1 to number of
     lines), where the line numbers are relative to [source] and the

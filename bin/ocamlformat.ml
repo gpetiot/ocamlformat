@@ -12,6 +12,7 @@
 (** OCamlFormat *)
 
 open Ocamlformat_lib
+open Result.Monad_infix
 
 ;;
 Caml.at_exit (Format.pp_print_flush Format.err_formatter)
@@ -39,10 +40,14 @@ let chop_any_extension s =
   | r -> r
   | exception Invalid_argument _ -> s
 
+let exe = chop_any_extension (Filename.basename Caml.Sys.argv.(0))
+
 let print_error conf opts ~input_name e =
-  let exe = chop_any_extension (Filename.basename Caml.Sys.argv.(0)) in
   Translation_unit.print_error ~fmt:Format.err_formatter ~exe
     ~debug:opts.Conf.debug ~quiet:conf.Conf.quiet ~input_name e
+
+let msg_to_error (`Msg msg) =
+  [(fun () -> Format.(fprintf err_formatter "%s: %s.\n%!" exe msg))]
 
 let run_action action opts =
   match action with
@@ -83,16 +88,11 @@ let run_action action opts =
       in
       Result.combine_errors_unit (List.map inputs ~f)
   | Print_config conf -> Conf.print_config conf ; Ok ()
-  | Numeric ({kind= Conf.Kind k; file; name= input_name; conf}, range) -> (
+  | Numeric ({kind= Conf.Kind k; file; name= input_name; conf}, range) ->
       let source = source_from_file file in
-      match
-        Translation_unit.numeric k ~input_name ~source ~range conf opts
-      with
-      | Ok indents ->
-          List.iter indents ~f:(fun i ->
-              Stdio.print_endline (Int.to_string i) ) ;
-          Ok ()
-      | Error e -> Error [(fun () -> print_error conf opts ~input_name e)] )
+      Translation_unit.numeric k ~input_name ~source ~range conf opts
+      |> Result.map_error ~f:msg_to_error
+      >>| List.iter ~f:(fun i -> Stdio.print_endline (Int.to_string i))
 
 ;;
 match Conf.action () with

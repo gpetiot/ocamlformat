@@ -378,7 +378,7 @@ let parse_and_format fragment ?output_file ~input_name ~source conf opts =
 let check_line nlines i =
   (* the last line of the buffer (nlines + 1) should not raise an error *)
   if 1 <= i && i <= nlines + 1 then Ok ()
-  else Error (User_error (Format.sprintf "Invalid line number %i." i))
+  else Error (`Msg (Format.sprintf "Invalid line number %i." i))
 
 let check_range nlines (low, high) =
   check_line nlines low
@@ -386,7 +386,7 @@ let check_range nlines (low, high) =
   check_line nlines high
   >>= fun () ->
   if low <= high then Ok ()
-  else Error (User_error (Format.sprintf "Invalid range %i-%i." low high))
+  else Error (`Msg (Format.sprintf "Invalid range %i-%i." low high))
 
 let numeric fragment ~input_name ~source ~range:(low, high) conf opts =
   let lines = String.split_lines source in
@@ -397,4 +397,4 @@ let numeric fragment ~input_name ~source ~range:(low, high) conf opts =
   ignore input_name ;
   ignore conf ;
   ignore opts ;
-  Error (Ocamlformat_bug {exn= failwith "not implemented"})
+  Error (`Msg "not implemented")
