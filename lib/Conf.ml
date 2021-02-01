@@ -1286,9 +1286,9 @@ let name =
 
 let numeric =
   let doc =
-    "Instead of re-indenting the file, output one integer per line \
-     representing the indentation value, printing as many values as lines \
-     in the range between lines X and Y (included)."
+    "Instead of re-formatting the file, output one integer per line \
+     corresponding to the indentation value, printing as many values as \
+     lines in the range between lines X and Y (included)."
   in
   let default = None in
   let docv = "X-Y" in
