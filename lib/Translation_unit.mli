@@ -13,7 +13,6 @@ type error
 
 val parse_and_format :
      _ list Migrate_ast.Traverse.fragment
-  -> ?format_invalid_files:bool
   -> ?output_file:string
   -> input_name:string
   -> source:string

@@ -226,13 +226,7 @@ let equal fragment ~ignore_doc_comments c a b =
 let normalize fragment c {Parse_with_comments.ast; _} =
   Normalize.normalize fragment c ast
 
-let recover (type a) : a Traverse.fragment -> _ = function
-  | Traverse.Structure -> Parse_wyc.Make_parsable.structure
-  | Traverse.Signature -> Parse_wyc.Make_parsable.signature
-  | Traverse.Use_file -> Parse_wyc.Make_parsable.use_file
-
-let format fragment ?(format_invalid_files = false) ?output_file ~input_name
-    ~prev_source ~parsed conf opts =
+let format fragment ?output_file ~input_name ~prev_source ~parsed conf opts =
   let open Result.Monad_infix in
   let dump_ast ~suffix ast =
     if opts.Conf.debug then
@@ -289,13 +283,6 @@ let format fragment ?(format_invalid_files = false) ?output_file ~input_name
       ( match parse fragment conf ~source:fmted with
       | exception Sys_error msg -> Error (User_error msg)
       | exception Warning50 l -> internal_error (`Warning50 l) (exn_args ())
-      | exception _ when format_invalid_files -> (
-        match parse fragment conf ~source:(recover fragment fmted) with
-        | exception exn -> internal_error (`Cannot_parse exn) (exn_args ())
-        | t_new ->
-            Format.fprintf Format.err_formatter
-              "Warning: %s is invalid, recovering.\n%!" input_name ;
-            Ok t_new )
       | exception exn -> internal_error (`Cannot_parse exn) (exn_args ())
       | t_new -> Ok t_new )
       >>= fun t_new ->
@@ -375,24 +362,15 @@ let format fragment ?(format_invalid_files = false) ?output_file ~input_name
   | Sys_error msg -> Error (User_error msg)
   | exn -> Error (Ocamlformat_bug {exn})
 
-let parse_result fragment ?(format_invalid_files = false) conf ~source
-    ~input_name =
+let parse_result fragment conf ~source =
   match parse fragment conf ~source with
-  | exception _ when format_invalid_files -> (
-    match parse fragment conf ~source:(recover fragment source) with
-    | exception exn -> Error (Invalid_source {exn})
-    | parsed ->
-        Format.fprintf Format.err_formatter
-          "Warning: %s is invalid, recovering.\n%!" input_name ;
-        Ok parsed )
   | exception exn -> Error (Invalid_source {exn})
   | parsed -> Ok parsed
 
-let parse_and_format fragment ?format_invalid_files ?output_file ~input_name
-    ~source conf opts =
+let parse_and_format fragment ?output_file ~input_name ~source conf opts =
   Ocaml_common.Location.input_name := input_name ;
   let open Result.Monad_infix in
-  parse_result fragment ?format_invalid_files conf ~source ~input_name
+  parse_result fragment conf ~source
   >>= fun parsed ->
-  format fragment ?format_invalid_files ?output_file ~input_name
-    ~prev_source:source ~parsed conf opts
+  format fragment ?output_file ~input_name ~prev_source:source ~parsed conf
+    opts
