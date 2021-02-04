@@ -31,6 +31,14 @@ end
 
 type state = Waiting_for_version | Version_defined of V.t
 
+let format fg source =
+  let input_name = "<rpc input>" in
+  let conf = Conf.default_profile in
+  let opts =
+    Conf.{debug= false; margin_check= false; format_invalid_files= false}
+  in
+  Translation_unit.parse_and_format fg ~input_name ~source conf opts
+
 let rec rpc_main = function
   | Waiting_for_version -> (
     match Ocamlformat_rpc_lib.Init.read_input stdin with
@@ -56,18 +64,16 @@ let rec rpc_main = function
       | `Halt -> Ok ()
       | `Unknown -> rpc_main state
       | `Format_type ty ->
-          let input_name = "<rpc input>" in
-          let conf = Conf.default_profile in
-          let opts =
-            Conf.
-              {debug= false; margin_check= false; format_invalid_files= false}
-          in
-          ( match
-              Translation_unit.parse_and_format Signature ~input_name
-                ~source:ty conf opts
-            with
+          ( match format Signature ty with
           | Ok formatted ->
               Ocamlformat_rpc_lib.V1.output stdout (`Format_type formatted)
+          | Error _ -> () ) ;
+          rpc_main state
+      | `Format_toplevel_phrase tp ->
+          ( match format Use_file tp with
+          | Ok formatted ->
+              Ocamlformat_rpc_lib.V1.output stdout
+                (`Format_toplevel_phrase formatted)
           | Error _ -> () ) ;
           rpc_main state ) )
 
@@ -100,10 +106,16 @@ let info =
         "Once the client and the server agree on a common version, the \
          requests you can send may differ from one version to another."
     ; `P
-        "On version $(i,v1), the supported RPC commands are: $(b,Halt) to \
+        "On version $(b,v1), the supported RPC commands are: $(b,Halt) to \
          close the connection to the RPC; $(b,Format_type) $(i,CSEXP): \
-         submits a canonical s-expression $(i,CSEXP) to be formatted by \
-         OCamlFormat. Unknown commands are ignored." ]
+         submits a canonical s-expression $(i,CSEXP) to be formatted as a \
+         type by OCamlFormat, the formatted output is sent as a reply of \
+         the same form $(b,Format_type) $(i,CSEXP); \
+         $(b,Format_toplevel_phrase) $(i,CSEXP): submits a canonical \
+         s-expression $(i,CSEXP) to be formatted by OCamlFormat as a \
+         toplevel phrase, the formatted output is sent as a reply of the \
+         same form $(b,Format_toplevel_phrase) $(i,CSEXP). Unknown commands \
+         are ignored." ]
   in
   Term.info "ocamlformat-rpc" ~version:Version.version ~doc ~man
 

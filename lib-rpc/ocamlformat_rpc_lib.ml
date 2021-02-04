@@ -43,16 +43,27 @@ struct
     Stdlib.flush channel
 end
 
-module V1 : V with type t = [`Halt | `Unknown | `Format_type of string] =
-struct
+module V1 :
+  V
+    with type t =
+          [ `Halt
+          | `Unknown
+          | `Format_type of string
+          | `Format_toplevel_phrase of string ] = struct
   module Csexp = Csexp.Make (Sexp)
 
-  type t = [`Halt | `Unknown | `Format_type of string]
+  type t =
+    [ `Halt
+    | `Unknown
+    | `Format_type of string
+    | `Format_toplevel_phrase of string ]
 
   let read_input in_channel =
     let open Sexp in
     match Csexp.input in_channel with
-    | Ok (List [Atom "Format_type"; Atom typ]) -> `Format_type typ
+    | Ok (List [Atom "Format_type"; Atom x]) -> `Format_type x
+    | Ok (List [Atom "Format_toplevel_phrase"; Atom x]) ->
+        `Format_toplevel_phrase x
     | Ok (Atom "Halt") -> `Halt
     | Ok _ -> `Unknown
     | Error _msg -> `Halt
@@ -60,7 +71,9 @@ struct
   let to_sexp =
     let open Sexp in
     function
-    | `Format_type typ -> List [Atom "Format_type"; Atom typ]
+    | `Format_type x -> List [Atom "Format_type"; Atom x]
+    | `Format_toplevel_phrase x ->
+        List [Atom "Format_toplevel_phrase"; Atom x]
     | _ -> assert false
 
   let output channel t =

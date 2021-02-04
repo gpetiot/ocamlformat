@@ -27,8 +27,12 @@ COMMANDS
 
        On version v1, the supported RPC commands are: Halt to close the
        connection to the RPC; Format_type CSEXP: submits a canonical
-       s-expression CSEXP to be formatted by OCamlFormat. Unknown commands
-       are ignored.
+       s-expression CSEXP to be formatted as a type by OCamlFormat, the
+       formatted output is sent as a reply of the same form Format_type
+       CSEXP; Format_toplevel_phrase CSEXP: submits a canonical s-expression
+       CSEXP to be formatted by OCamlFormat as a toplevel phrase, the
+       formatted output is sent as a reply of the same form
+       Format_toplevel_phrase CSEXP. Unknown commands are ignored.
 
 OPTIONS
        --help[=FMT] (default=auto)

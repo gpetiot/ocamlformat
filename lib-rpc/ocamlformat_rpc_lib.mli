@@ -22,4 +22,10 @@ end
 (** Version used to set the protocol version *)
 module Init : V with type t = [`Halt | `Unknown | `Version of string]
 
-module V1 : V with type t = [`Halt | `Unknown | `Format_type of string]
+module V1 :
+  V
+    with type t =
+          [ `Halt
+          | `Unknown
+          | `Format_type of string
+          | `Format_toplevel_phrase of string ]
