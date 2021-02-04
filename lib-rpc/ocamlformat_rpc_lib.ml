@@ -51,7 +51,7 @@ module V1 :
           [ `Halt
           | `Unknown
           | `Error of string
-          | `Format_type of string
+          | `Format_signature of string
           | `Format_toplevel_phrase of string ] = struct
   module Csexp = Csexp.Make (Sexp)
 
@@ -59,13 +59,13 @@ module V1 :
     [ `Halt
     | `Unknown
     | `Error of string
-    | `Format_type of string
+    | `Format_signature of string
     | `Format_toplevel_phrase of string ]
 
   let read_input in_channel =
     let open Sexp in
     match Csexp.input in_channel with
-    | Ok (List [Atom "Format_type"; Atom x]) -> `Format_type x
+    | Ok (List [Atom "Format_signature"; Atom x]) -> `Format_signature x
     | Ok (List [Atom "Format_toplevel_phrase"; Atom x]) ->
         `Format_toplevel_phrase x
     | Ok (List [Atom "Error"; Atom x])-> `Error x
@@ -76,7 +76,7 @@ module V1 :
   let to_sexp =
     let open Sexp in
     function
-    | `Format_type x -> List [Atom "Format_type"; Atom x]
+    | `Format_signature x -> List [Atom "Format_signature"; Atom x]
     | `Format_toplevel_phrase x ->
         List [Atom "Format_toplevel_phrase"; Atom x]
     | `Error x -> List [Atom "Error"; Atom x]
