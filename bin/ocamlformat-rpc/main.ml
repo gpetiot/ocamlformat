@@ -63,10 +63,11 @@ let rec rpc_main = function
       match Ocamlformat_rpc_lib.V1.read_input stdin with
       | `Halt -> Ok ()
       | `Unknown -> rpc_main state
-      | `Format_type ty ->
+      | `Format_signature ty ->
           ( match format Signature ty with
           | Ok formatted ->
-              Ocamlformat_rpc_lib.V1.output stdout (`Format_type formatted)
+              Ocamlformat_rpc_lib.V1.output stdout
+                (`Format_signature formatted)
           | Error _ -> () ) ;
           rpc_main state
       | `Format_toplevel_phrase tp ->
@@ -107,10 +108,10 @@ let info =
          requests you can send may differ from one version to another."
     ; `P
         "On version $(b,v1), the supported RPC commands are: $(b,Halt) to \
-         close the connection to the RPC; $(b,Format_type) $(i,CSEXP): \
+         close the connection to the RPC; $(b,Format_signature) $(i,CSEXP): \
          submits a canonical s-expression $(i,CSEXP) to be formatted as a \
-         type by OCamlFormat, the formatted output is sent as a reply of \
-         the same form $(b,Format_type) $(i,CSEXP); \
+         signature by OCamlFormat, the formatted output is sent as a reply \
+         of the same form $(b,Format_signature) $(i,CSEXP); \
          $(b,Format_toplevel_phrase) $(i,CSEXP): submits a canonical \
          s-expression $(i,CSEXP) to be formatted by OCamlFormat as a \
          toplevel phrase, the formatted output is sent as a reply of the \

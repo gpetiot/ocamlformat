@@ -27,5 +27,5 @@ module V1 :
     with type t =
           [ `Halt
           | `Unknown
-          | `Format_type of string
+          | `Format_signature of string
           | `Format_toplevel_phrase of string ]
