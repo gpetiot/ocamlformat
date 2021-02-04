@@ -15,14 +15,14 @@ Sending a Version command with an invalid version:
   $ ocamlformat-rpc <<EOF
   > (7:Version2:v0)
   > EOF
-  (Version v1)
+  (7:Version2:v1)
 
 Sending a Version command with a valid version:
 
   $ ocamlformat-rpc <<EOF
   > (7:Version2:v1)
   > EOF
-  (Version v1)
+  (7:Version2:v1)
 
 Sending several Format_type commands:
 
