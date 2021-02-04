@@ -19,15 +19,17 @@ Caml.at_exit (Format.pp_print_flush Format.err_formatter)
 ;;
 Caml.at_exit (Format_.pp_print_flush Format_.err_formatter)
 
-type version = V1
+module V = struct
+  type t = V1
 
-type state = Waiting_for_version | Version_defined of version
+  let is_handled = function "v1" | "V1" -> Some V1 | _ -> None
 
-let version_handled = function "v1" | "V1" -> Some V1 | _ -> None
+  let propose_another = function "v1" | "V1" -> None | _ -> Some V1
 
-let propose_another_version = function
-  | "v1" | "V1" -> None
-  | _ -> Some ("v1", V1)
+  let to_string = function V1 -> "v1"
+end
+
+type state = Waiting_for_version | Version_defined of V.t
 
 let rec rpc_main = function
   | Waiting_for_version -> (
@@ -35,14 +37,15 @@ let rec rpc_main = function
     | `Halt -> Ok ()
     | `Unknown -> Ok ()
     | `Version vstr -> (
-      match version_handled vstr with
+      match V.is_handled vstr with
       | Some v ->
           Ocamlformat_rpc_lib.Init.output stdout (`Version vstr) ;
           Out_channel.flush stdout ;
           rpc_main (Version_defined v)
       | None -> (
-        match propose_another_version vstr with
-        | Some (vstr, _v) ->
+        match V.propose_another vstr with
+        | Some v ->
+            let vstr = V.to_string v in
             Ocamlformat_rpc_lib.Init.output stdout (`Version vstr) ;
             rpc_main Waiting_for_version
         | None -> Ok () ) ) )
