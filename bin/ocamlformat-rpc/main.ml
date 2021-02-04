@@ -62,19 +62,36 @@ let rec rpc_main = function
     | V1 -> (
       match Ocamlformat_rpc_lib.V1.read_input stdin with
       | `Halt -> Ok ()
-      | `Unknown -> rpc_main state
+      | `Unknown | `Error _ -> rpc_main state
       | `Format_type ty ->
           ( match format Signature ty with
           | Ok formatted ->
               Ocamlformat_rpc_lib.V1.output stdout (`Format_type formatted)
-          | Error _ -> () ) ;
+          | Error e ->
+            Translation_unit.print_error
+              ~fmt:(Format.str_formatter)
+              ~exe:"ocamlformat-rpc"
+              ~debug:false
+              ~quiet:false
+              ~input_name:ty
+              e;
+              Ocamlformat_rpc_lib.V1.output stdout (`Error (Format.flush_str_formatter ()))) ;
           rpc_main state
       | `Format_toplevel_phrase tp ->
           ( match format Use_file tp with
           | Ok formatted ->
               Ocamlformat_rpc_lib.V1.output stdout
                 (`Format_toplevel_phrase formatted)
-          | Error _ -> () ) ;
+          | Error e ->
+            Translation_unit.print_error
+              ~fmt:(Format.str_formatter)
+              ~exe:"ocamlformat-rpc"
+              ~debug:false
+              ~quiet:false
+              ~input_name:tp
+              e;
+              Ocamlformat_rpc_lib.V1.output stdout (`Error (Format.flush_str_formatter ()))
+          ) ;
           rpc_main state ) )
 
 let rpc_main () = rpc_main Waiting_for_version

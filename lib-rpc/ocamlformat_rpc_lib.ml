@@ -50,6 +50,7 @@ module V1 :
     with type t =
           [ `Halt
           | `Unknown
+          | `Error of string
           | `Format_type of string
           | `Format_toplevel_phrase of string ] = struct
   module Csexp = Csexp.Make (Sexp)
@@ -57,6 +58,7 @@ module V1 :
   type t =
     [ `Halt
     | `Unknown
+    | `Error of string
     | `Format_type of string
     | `Format_toplevel_phrase of string ]
 
@@ -66,6 +68,7 @@ module V1 :
     | Ok (List [Atom "Format_type"; Atom x]) -> `Format_type x
     | Ok (List [Atom "Format_toplevel_phrase"; Atom x]) ->
         `Format_toplevel_phrase x
+    | Ok (List [Atom "Error"; Atom x])-> `Error x
     | Ok (Atom "Halt") -> `Halt
     | Ok _ -> `Unknown
     | Error _msg -> `Halt
@@ -76,6 +79,7 @@ module V1 :
     | `Format_type x -> List [Atom "Format_type"; Atom x]
     | `Format_toplevel_phrase x ->
         List [Atom "Format_toplevel_phrase"; Atom x]
+    | `Error x -> List [Atom "Error"; Atom x]
     | _ -> assert false
 
   let output channel t =

@@ -27,5 +27,6 @@ module V1 :
     with type t =
           [ `Halt
           | `Unknown
+          | `Error of string
           | `Format_type of string
           | `Format_toplevel_phrase of string ]
