@@ -37,18 +37,13 @@ let rec rpc_main = function
     | `Version vstr -> (
       match version_handled vstr with
       | Some v ->
-          let answer = Ocamlformat_rpc_lib.Init.(to_sexp (`Version vstr)) in
-          Out_channel.output_string stdout (Sexp.to_string answer) ;
+          Ocamlformat_rpc_lib.Init.output stdout (`Version vstr);
           Out_channel.flush stdout ;
           rpc_main (Version_defined v)
       | None -> (
         match propose_another_version vstr with
         | Some (vstr, _v) ->
-            let answer =
-              Ocamlformat_rpc_lib.Init.(to_sexp (`Version vstr))
-            in
-            Out_channel.output_string stdout (Sexp.to_string answer) ;
-            Out_channel.flush stdout ;
+            Ocamlformat_rpc_lib.Init.output stdout (`Version vstr);
             rpc_main Waiting_for_version
         | None -> Ok () ) ) )
   | Version_defined v as state -> (
@@ -76,11 +71,7 @@ let rec rpc_main = function
                 ~source:ty conf opts
             with
           | Ok formatted ->
-              let answer =
-                Ocamlformat_rpc_lib.V1.(to_sexp (`Format_type formatted))
-              in
-              Out_channel.output_string stdout (Sexp.to_string answer) ;
-              Out_channel.flush stdout
+              Ocamlformat_rpc_lib.V1.output stdout (`Format_type formatted)
           | Error _ -> () ) ;
           rpc_main state ) )
 
