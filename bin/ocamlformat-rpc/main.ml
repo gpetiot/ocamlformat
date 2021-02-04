@@ -54,14 +54,7 @@ let rec rpc_main = function
       | `Unknown -> rpc_main state
       | `Format_type ty ->
           let input_name = "<rpc input>" in
-          let conf =
-            Conf.build_config
-            (* we want to format the type no matter what, so even if there is
-               not any .ocamlformat file *)
-              ~enable_outside_detected_project:true
-              ~root:(Some (Fpath.cwd ()))
-              ~file:input_name ~is_stdin:true
-          in
+          let conf = Conf.default_profile in
           let opts =
             Conf.
               {debug= false; margin_check= false; format_invalid_files= false}

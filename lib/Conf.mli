@@ -81,6 +81,8 @@ type t =
   ; wrap_comments: bool  (** Wrap comments at margin. *)
   ; wrap_fun_args: bool }
 
+val default_profile : t
+
 type file = Stdin | File of string
 
 type kind = Kind : _ list Migrate_ast.Traverse.fragment -> kind
@@ -111,10 +113,3 @@ val update : ?quiet:bool -> t -> Migrate_ast.Parsetree.attribute -> t
     [a]. [quiet] is false by default. *)
 
 val print_config : t -> unit
-
-val build_config :
-     enable_outside_detected_project:bool
-  -> root:Import.Fpath.t option
-  -> file:string
-  -> is_stdin:bool
-  -> t
