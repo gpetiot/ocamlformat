@@ -37,13 +37,13 @@ let rec rpc_main = function
     | `Version vstr -> (
       match version_handled vstr with
       | Some v ->
-          Ocamlformat_rpc_lib.Init.output stdout (`Version vstr);
+          Ocamlformat_rpc_lib.Init.output stdout (`Version vstr) ;
           Out_channel.flush stdout ;
           rpc_main (Version_defined v)
       | None -> (
         match propose_another_version vstr with
         | Some (vstr, _v) ->
-            Ocamlformat_rpc_lib.Init.output stdout (`Version vstr);
+            Ocamlformat_rpc_lib.Init.output stdout (`Version vstr) ;
             rpc_main Waiting_for_version
         | None -> Ok () ) ) )
   | Version_defined v as state -> (

@@ -12,11 +12,11 @@
 module type V = sig
   type t
 
-  val read_input :  Stdlib.in_channel -> t
+  val read_input : Stdlib.in_channel -> t
 
   val to_sexp : t -> Sexp.t
 
-  val output :  Stdlib.out_channel -> t -> unit
+  val output : Stdlib.out_channel -> t -> unit
 end
 
 module Init : V with type t = [`Halt | `Unknown | `Version of string] =
@@ -39,7 +39,7 @@ struct
     | `Version v -> List [Atom "Version"; Atom v] | _ -> assert false
 
   let output channel t =
-    to_sexp t |> Csexp.to_channel channel;
+    to_sexp t |> Csexp.to_channel channel ;
     Stdlib.flush channel
 end
 
@@ -64,6 +64,6 @@ struct
     | _ -> assert false
 
   let output channel t =
-    to_sexp t |> Csexp.to_channel channel;
+    to_sexp t |> Csexp.to_channel channel ;
     Stdlib.flush channel
 end
