@@ -12,9 +12,11 @@
 module type V = sig
   type t
 
-  val read_input : In_channel.t -> t
+  val read_input : Stdlib.in_channel -> t
 
   val to_sexp : t -> Sexp.t
+
+  val output : Stdlib.out_channel -> t -> unit
 end
 
 (** Version used to set the protocol version *)
