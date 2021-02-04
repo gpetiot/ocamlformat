@@ -12,7 +12,7 @@ depends: [
   "dune" {>= "2.7"}
   "ocaml"
   "csexp"
-  "stdio" {< "v0.15"}
+  "sexplib0"
   "odoc" {with-doc}
 ]
 build: [

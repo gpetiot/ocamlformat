@@ -14,7 +14,7 @@ module type V = sig
 
   val read_input : Stdlib.in_channel -> t
 
-  val to_sexp : t -> Sexp.t
+  val to_sexp : t -> Sexplib0.Sexp.t
 
   val output : Stdlib.out_channel -> t -> unit
 end

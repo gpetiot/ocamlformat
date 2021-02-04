@@ -127,8 +127,4 @@
  (synopsis "Auto-formatter for OCaml code (RPC mode)")
  (description
    "OCamlFormat is a tool to automatically format OCaml code in a uniform style. This package defines a RPC interface to OCamlFormat")
- (depends
-  ocaml
-  csexp
-  (stdio
-   (< v0.15))))
+ (depends ocaml csexp sexplib0))
