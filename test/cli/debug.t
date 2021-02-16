@@ -5,7 +5,7 @@
   >     A.x
   > EOF
 
-  $ ocamlformat --debug a.ml
+  $ ocamlformat --debug a.ml --enable-outside-detected-project
   
   Comments:
   ([1,0+0]..[1,0+33])  Intentionally not formatted  eol
