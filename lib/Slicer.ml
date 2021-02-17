@@ -128,9 +128,11 @@ let split input ~f =
   |> List.filter ~f:(Fn.non String.is_empty)
   |> List.rev
 
+let concat prev_lines = List.rev prev_lines |> String.concat ~sep:"\n"
+
 let split_according_to_tokens input ~range:_ =
   let rec aux ~ret ~prev_lines = function
-    | [] -> (List.rev prev_lines |> String.concat ~sep:"\n") :: ret
+    | [] -> concat prev_lines :: ret
     | Location.{txt= line; _} :: t -> (
       match first_non_empty prev_lines with
       | None -> aux ~ret ~prev_lines:[line] t
@@ -146,10 +148,7 @@ let split_according_to_tokens input ~range:_ =
                    && Line.indent line = Line.indent first
                    && Line.indent line <= Line.indent last
                    && not (Line.expects_followup last) ->
-                aux
-                  ~ret:
-                    ((List.rev prev_lines |> String.concat ~sep:"\n") :: ret)
-                  ~prev_lines:[line; cmt] t
+                aux ~ret:(concat prev_lines :: ret) ~prev_lines:[line; cmt] t
             | _ -> aux ~ret ~prev_lines:(line :: prev_lines) t )
           | _ ->
               if
@@ -157,23 +156,17 @@ let split_according_to_tokens input ~range:_ =
                 && Line.indent line = Line.indent first
                 && Line.indent line <= Line.indent last
                 && not (Line.expects_followup last)
-              then
-                aux
-                  ~ret:
-                    ((List.rev prev_lines |> String.concat ~sep:"\n") :: ret)
-                  ~prev_lines:[line] t
+              then aux ~ret:(concat prev_lines :: ret) ~prev_lines:[line] t
               else aux ~ret ~prev_lines:(line :: prev_lines) t ) ) )
   in
   split input ~f:(aux ~ret:[] ~prev_lines:[])
 
 let split_according_to_semisemi input ~range:_ =
   let rec aux ~ret ~prev_lines = function
-    | [] -> (List.rev prev_lines |> String.concat ~sep:"\n") :: ret
+    | [] -> concat prev_lines :: ret
     | Location.{txt= line; _} :: t ->
         if Line.starts_with Parser.SEMISEMI line && Line.indent line = 0 then
-          aux
-            ~ret:((List.rev prev_lines |> String.concat ~sep:"\n") :: ret)
-            ~prev_lines:[line] t
+          aux ~ret:(concat prev_lines :: ret) ~prev_lines:[line] t
         else aux ~ret ~prev_lines:(line :: prev_lines) t
   in
   split input ~f:(aux ~ret:[] ~prev_lines:[])
