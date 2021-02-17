@@ -124,18 +124,16 @@ let split_on_linebreaks lexed : string Location.loc list =
 
 let split input ~f =
   Cmt_lexer.lex_comments input
-  |> split_on_linebreaks
-  |> List.fold_left ~init:([], []) ~f
-  |> (fun (ret, prev_lines) ->
-       (List.rev prev_lines |> Astring.String.concat ~sep:"\n") :: ret )
-  |> List.map ~f:String.strip
+  |> split_on_linebreaks |> f |> List.map ~f:String.strip
   |> List.filter ~f:(Fn.non String.is_empty)
   |> List.rev
 
 let split_according_to_tokens input ~range:_ =
-  split input ~f:(fun (ret, prev_lines) {txt= line; _} ->
+  let rec aux ~ret ~prev_lines = function
+    | [] -> (List.rev prev_lines |> String.concat ~sep:"\n") :: ret
+    | Location.{txt= line; _} :: t -> (
       match first_non_empty prev_lines with
-      | None -> (ret, [line])
+      | None -> aux ~ret ~prev_lines:[line] t
       | Some last -> (
         match first_non_empty (List.rev prev_lines) with
         | None -> impossible "filtered by previous pattern matching"
@@ -148,18 +146,32 @@ let split_according_to_tokens input ~range:_ =
             then
               match prev_lines with
               | cmt :: "" :: prev_lines when Line.is_cmt cmt ->
-                  ( (List.rev prev_lines |> String.concat ~sep:"\n") :: ret
-                  , [line; cmt] )
+                  aux
+                    ~ret:
+                      ((List.rev prev_lines |> String.concat ~sep:"\n")
+                       :: ret )
+                    ~prev_lines:[line; cmt] t
               | _ ->
-                  ( (List.rev prev_lines |> String.concat ~sep:"\n") :: ret
-                  , [line] )
-            else (ret, line :: prev_lines) ) )
+                  aux
+                    ~ret:
+                      ((List.rev prev_lines |> String.concat ~sep:"\n")
+                       :: ret )
+                    ~prev_lines:[line] t
+            else aux ~ret ~prev_lines:(line :: prev_lines) t ) )
+  in
+  split input ~f:(aux ~ret:[] ~prev_lines:[])
 
 let split_according_to_semisemi input ~range:_ =
-  split input ~f:(fun (ret, prev_lines) {txt= line; _} ->
-      if Line.starts_with Parser.SEMISEMI line && Line.indent line = 0 then
-        ((List.rev prev_lines |> String.concat ~sep:"\n") :: ret, [line])
-      else (ret, line :: prev_lines) )
+  let rec aux ~ret ~prev_lines = function
+    | [] -> (List.rev prev_lines |> String.concat ~sep:"\n") :: ret
+    | Location.{txt= line; _} :: t ->
+        if Line.starts_with Parser.SEMISEMI line && Line.indent line = 0 then
+          aux
+            ~ret:((List.rev prev_lines |> String.concat ~sep:"\n") :: ret)
+            ~prev_lines:[line] t
+        else aux ~ret ~prev_lines:(line :: prev_lines) t
+  in
+  split input ~f:(aux ~ret:[] ~prev_lines:[])
 
 let split_toplevel input ~range =
   split_according_to_semisemi input ~range
