@@ -122,58 +122,58 @@ let split_on_linebreaks lexed : string Location.loc list =
   in
   List.rev (aux [] ~break:false lexed)
 
-let split input ~f =
+let concat prev_lines = List.rev prev_lines |> String.concat ~sep:"\n"
+
+let split input ~f ~range:_ =
+  let rec aux ~ret ~prev_lines = function
+    | [] -> concat prev_lines :: ret
+    | h :: t ->
+        let prev_lines, ret, t = f ~prev_lines ~ret h t in
+        aux ~ret ~prev_lines t
+  in
   Cmt_lexer.lex_comments input
-  |> split_on_linebreaks |> f |> List.map ~f:String.strip
+  |> split_on_linebreaks
+  |> aux ~ret:[] ~prev_lines:[]
+  |> List.map ~f:String.strip
   |> List.filter ~f:(Fn.non String.is_empty)
   |> List.rev
 
-let concat prev_lines = List.rev prev_lines |> String.concat ~sep:"\n"
+let split_according_to_tokens ~prev_lines ~ret Location.{txt= line; _} t =
+  match first_non_empty prev_lines with
+  | None -> ([line], ret, t)
+  | Some last -> (
+    match first_non_empty (List.rev prev_lines) with
+    | None -> impossible "filtered by previous pattern matching"
+    | Some first -> (
+      match line with
+      | "" -> (
+        match t with
+        | Location.{txt= cmt; _} :: {txt= line; _} :: t
+          when Line.is_cmt cmt && Line.starts_new_item line
+               && Line.indent line = Line.indent first
+               && Line.indent line <= Line.indent last
+               && not (Line.expects_followup last) ->
+            ([line; cmt], concat prev_lines :: ret, t)
+        | _ -> (line :: prev_lines, ret, t) )
+      | _ ->
+          if
+            Line.starts_new_item line
+            && Line.indent line = Line.indent first
+            && Line.indent line <= Line.indent last
+            && not (Line.expects_followup last)
+          then ([line], concat prev_lines :: ret, t)
+          else (line :: prev_lines, ret, t) ) )
 
-let split_according_to_tokens input ~range:_ =
-  let rec aux ~ret ~prev_lines = function
-    | [] -> concat prev_lines :: ret
-    | Location.{txt= line; _} :: t -> (
-      match first_non_empty prev_lines with
-      | None -> aux ~ret ~prev_lines:[line] t
-      | Some last -> (
-        match first_non_empty (List.rev prev_lines) with
-        | None -> impossible "filtered by previous pattern matching"
-        | Some first -> (
-          match line with
-          | "" -> (
-            match t with
-            | {txt= cmt; _} :: {txt= line; _} :: t
-              when Line.is_cmt cmt && Line.starts_new_item line
-                   && Line.indent line = Line.indent first
-                   && Line.indent line <= Line.indent last
-                   && not (Line.expects_followup last) ->
-                aux ~ret:(concat prev_lines :: ret) ~prev_lines:[line; cmt] t
-            | _ -> aux ~ret ~prev_lines:(line :: prev_lines) t )
-          | _ ->
-              if
-                Line.starts_new_item line
-                && Line.indent line = Line.indent first
-                && Line.indent line <= Line.indent last
-                && not (Line.expects_followup last)
-              then aux ~ret:(concat prev_lines :: ret) ~prev_lines:[line] t
-              else aux ~ret ~prev_lines:(line :: prev_lines) t ) ) )
-  in
-  split input ~f:(aux ~ret:[] ~prev_lines:[])
+let split_according_to_semisemi ~prev_lines ~ret Location.{txt= line; _} t =
+  if Line.starts_with Parser.SEMISEMI line && Line.indent line = 0 then
+    ([line], concat prev_lines :: ret, t)
+  else (line :: prev_lines, ret, t)
 
-let split_according_to_semisemi input ~range:_ =
-  let rec aux ~ret ~prev_lines = function
-    | [] -> concat prev_lines :: ret
-    | Location.{txt= line; _} :: t ->
-        if Line.starts_with Parser.SEMISEMI line && Line.indent line = 0 then
-          aux ~ret:(concat prev_lines :: ret) ~prev_lines:[line] t
-        else aux ~ret ~prev_lines:(line :: prev_lines) t
-  in
-  split input ~f:(aux ~ret:[] ~prev_lines:[])
+let split_nontoplevel = split ~f:split_according_to_tokens
 
 let split_toplevel input ~range =
-  split_according_to_semisemi input ~range
-  |> map_flatten ~f:(split_according_to_tokens ~range)
+  split ~f:split_according_to_semisemi input ~range
+  |> map_flatten ~f:(split_nontoplevel ~range)
 
 let merge =
   List.fold_left ~init:"" ~f:(fun x y ->
@@ -181,7 +181,6 @@ let merge =
 
 let fragment (type a) (fg : a Migrate_ast.Traverse.fragment) ~range input =
   ( match fg with
-  | Structure -> split_toplevel input ~range
-  | Use_file -> split_toplevel input ~range
-  | Signature -> split_according_to_tokens input ~range )
+  | Structure | Use_file -> split_toplevel input ~range
+  | Signature -> split_nontoplevel input ~range )
   |> merge
