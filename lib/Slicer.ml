@@ -16,7 +16,7 @@ let map_flatten l ~f =
 
 let rec first_non_empty = function
   | [] -> None
-  | "" :: t -> first_non_empty t
+  | Location.{txt= ""; _} :: t -> first_non_empty t
   | h :: _ -> Some h
 
 module Line = struct
@@ -48,9 +48,9 @@ module Line = struct
 
   let break_according_to_tokens ~first ~last line =
     starts_new_item line
-    && indent line = indent first
-    && indent line <= indent last
-    && not (expects_followup last)
+    && indent line = indent first.Location.txt
+    && indent line <= indent last.Location.txt
+    && not (expects_followup last.txt)
 
   (* only oneliners for now *)
   let is_cmt x =
@@ -128,45 +128,97 @@ let split_on_linebreaks lexed : string Location.loc list =
   in
   List.rev (aux [] ~break:false lexed)
 
-let concat prev_lines = List.rev prev_lines |> String.concat ~sep:"\n"
+let concat x dst =
+  match x with
+  | [] -> dst
+  | [s] -> s :: dst
+  | (h : string Location.loc) :: t ->
+      List.fold_left t ~init:h ~f:(fun acc (x : string Location.loc) ->
+          { txt= x.txt ^ "\n" ^ acc.txt
+          ; loc= {acc.loc with loc_start= x.loc.loc_start} } )
+      :: dst
 
-let split input ~f ~range:_ =
+let split input ~f ~range =
   let rec aux ~ret ~prev_lines = function
-    | [] -> concat prev_lines :: ret
+    | [] -> concat prev_lines ret
     | h :: t ->
-        let prev_lines, ret, t = f ~prev_lines ~ret h t in
+        let prev_lines, ret, t = f ~prev_lines ~ret ~range h t in
         aux ~ret ~prev_lines t
   in
   Cmt_lexer.lex_comments input
   |> split_on_linebreaks
   |> aux ~ret:[] ~prev_lines:[]
-  |> List.map ~f:String.strip
+  |> List.map ~f:(fun Location.{txt; _} -> String.strip txt)
   |> List.filter ~f:(Fn.non String.is_empty)
   |> List.rev
 
-let split_according_to_tokens ~prev_lines ~ret Location.{txt= line; _} t =
+let split_according_to_tokens ~prev_lines ~ret ~range:(low, high)
+    (line : string Location.loc) (t : string Location.loc list) =
   match first_non_empty prev_lines with
   | None -> ([line], ret, t)
   | Some last -> (
     match first_non_empty (List.rev prev_lines) with
     | None -> impossible "filtered by previous pattern matching"
     | Some first -> (
-      match line with
+      match line.txt with
       | "" -> (
         match t with
-        | Location.{txt= cmt; _} :: {txt= line; _} :: t
-          when Line.is_cmt cmt
-               && Line.break_according_to_tokens ~first ~last line ->
-            ([line; cmt], concat prev_lines :: ret, t)
+        | cmt :: line :: t
+          when Line.is_cmt cmt.txt
+               && Line.break_according_to_tokens ~first ~last line.txt ->
+            let before = concat prev_lines ret in
+            let range_starts_after =
+              match before with
+              | [] -> true
+              | x :: _ -> x.loc.loc_end.pos_lnum + 1 < low
+            in
+            if range_starts_after then
+              (* The [range] starts after this item, we can discard the items
+                 already added in [ret]. *)
+              ([line; cmt], [], t)
+            else if cmt.loc.loc_start.pos_lnum + 1 > high then
+              (* The [range] ends before this item, we can discard what comes
+                 after. *)
+              ([], before, [])
+            else ([line; cmt], before, t)
         | _ -> (line :: prev_lines, ret, t) )
       | _ ->
-          if Line.break_according_to_tokens ~first ~last line then
-            ([line], concat prev_lines :: ret, t)
+          if Line.break_according_to_tokens ~first ~last line.txt then
+            let before = concat prev_lines ret in
+            let range_starts_after =
+              match before with
+              | [] -> true
+              | x :: _ -> x.loc.loc_end.pos_lnum + 1 < low
+            in
+            if range_starts_after then
+              (* The [range] starts after this item, we can discard the items
+                 already added in [ret]. *)
+              ([line], [], t)
+            else if line.loc.loc_start.pos_lnum + 1 > high then
+              (* The [range] ends before this item, we can discard what comes
+                 after. *)
+              ([], concat prev_lines ret, [])
+            else ([line], concat prev_lines ret, t)
           else (line :: prev_lines, ret, t) ) )
 
-let split_according_to_semisemi ~prev_lines ~ret Location.{txt= line; _} t =
-  if Line.starts_with Parser.SEMISEMI line && Line.indent line = 0 then
-    ([line], concat prev_lines :: ret, t)
+let split_according_to_semisemi ~prev_lines ~ret ~range:(low, high)
+    (line : string Location.loc) t =
+  if Line.starts_with Parser.SEMISEMI line.txt && Line.indent line.txt = 0
+  then
+    let before = concat prev_lines ret in
+    let range_starts_after =
+      match before with
+      | [] -> true
+      | x :: _ -> x.loc.loc_end.pos_lnum + 1 < low
+    in
+    if range_starts_after then
+      (* The [range] starts after this item, we can discard the items already
+         added in [ret]. *)
+      ([line], [], t)
+    else if line.loc.loc_start.pos_lnum + 1 > high then
+      (* The [range] ends before this item, we can discard what comes after. *)
+      ([], concat prev_lines ret, [])
+    else ([line], concat prev_lines ret, t)
   else (line :: prev_lines, ret, t)
 
 let split_nontoplevel = split ~f:split_according_to_tokens
