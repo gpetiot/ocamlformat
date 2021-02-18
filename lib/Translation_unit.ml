@@ -388,13 +388,31 @@ let check_range nlines (low, high) =
   if low <= high then Ok ()
   else Error (`Msg (Format.sprintf "Invalid range %i-%i." low high))
 
-let numeric fragment ~input_name ~source ~range:(low, high) conf opts =
+let numeric fragment ~input_name ~source ~range conf opts =
   let lines = String.split_lines source in
   let nlines = List.length lines in
-  check_range nlines (low, high)
-  >>= fun () ->
-  ignore fragment ;
-  ignore input_name ;
-  ignore conf ;
-  ignore opts ;
-  Error (`Msg "not implemented")
+  check_range nlines range
+  >>| fun () ->
+  let sliced_source = Slicer.fragment fragment ~range source in
+  Ocaml_common.Location.input_name := input_name ;
+  let fallback () = Indent.Partial_ast.indent_range ~lines ~range in
+  let indent_parsed ({ast= parsed_ast; source= parsed_source; _} as parsed)
+      source =
+    match
+      format fragment ~input_name ~prev_source:source ~parsed conf opts
+    with
+    | Error _ -> fallback ()
+    | Ok formatted_source -> (
+      match parse fragment ~source:formatted_source conf with
+      | exception _ -> fallback ()
+      | {ast= fmted_ast; source= fmted_source; _} ->
+          Indent.Valid_ast.indent_range fragment ~lines ~range
+            ~unformatted:(parsed_ast, parsed_source)
+            ~formatted:(fmted_ast, fmted_source) )
+  in
+  match parse fragment conf ~source:sliced_source with
+  | exception _ -> (
+    match parse fragment conf ~source with
+    | exception _ -> fallback ()
+    | parsed -> indent_parsed parsed source )
+  | parsed -> indent_parsed parsed sliced_source
