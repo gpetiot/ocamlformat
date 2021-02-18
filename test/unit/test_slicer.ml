@@ -15,13 +15,33 @@ let test_use_file =
   ; make_test "invalid let" ~range:(1, 1) ~input:"let x" ~expected:"let x"
   ; make_test "valid let" ~range:(1, 1) ~input:"let x = 2"
       ~expected:"let x = 2"
-  ; make_test "2 let 1l split" ~range:(1, 2) ~input:"let x = x\nlet y = y"
-      ~expected:"let x = x\n\nlet y = y"
-  ; make_test "2 let 2l split" ~range:(1, 3) ~input:"let x = x\n\nlet y = y"
-      ~expected:"let x = x\n\nlet y = y"
+  ; make_test "2 let 1l split (a)" ~range:(1, 2)
+      ~input:"let x = x\nlet y = y" ~expected:"let x = x\n\nlet y = y"
+  ; make_test "2 let 1l split (b)" ~range:(1, 1)
+      ~input:"let x = x\nlet y = y" ~expected:"let x = x"
+  ; make_test "2 let 1l split (c)" ~range:(2, 2)
+      ~input:"let x = x\nlet y = y" ~expected:"let y = y"
+  ; make_test "2 let 2l split (a)" ~range:(1, 3)
+      ~input:"let x = x\n\nlet y = y" ~expected:"let x = x\n\nlet y = y"
+  ; make_test "2 let 2l split (b)" ~range:(1, 2)
+      ~input:"let x = x\n\nlet y = y" ~expected:"let x = x"
+  ; make_test "2 let 2l split (c)" ~range:(2, 3)
+      ~input:"let x = x\n\nlet y = y" ~expected:"let x = x\n\nlet y = y"
+  ; make_test "2 let 2l split (d)" ~range:(3, 3)
+      ~input:"let x = x\n\nlet y = y" ~expected:"let y = y"
   ; make_test "2 let mix split" ~range:(1, 4)
       ~input:"let x =\n\nx\nlet y = y" ~expected:"let x =\n\nx\n\nlet y = y"
-  ]
+  ; make_test "" ~range:(8, 8)
+      ~input:{|
+module X = struct
+  let x = [
+
+  let y = bar
+end
+
+let f =
+|}
+      ~expected:"let f =" ]
 
 let test_interface =
   let make_test name ~range ~input ~expected =
