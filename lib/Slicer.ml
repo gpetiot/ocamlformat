@@ -46,6 +46,12 @@ module Line = struct
 
   let indent x = String.(length x - length (lstrip x))
 
+  let break_according_to_tokens ~first ~last line =
+    starts_new_item line
+    && indent line = indent first
+    && indent line <= indent last
+    && not (expects_followup last)
+
   (* only oneliners for now *)
   let is_cmt x =
     String.is_prefix x ~prefix:"(*" && String.is_suffix x ~suffix:"*)"
@@ -149,19 +155,13 @@ let split_according_to_tokens ~prev_lines ~ret Location.{txt= line; _} t =
       | "" -> (
         match t with
         | Location.{txt= cmt; _} :: {txt= line; _} :: t
-          when Line.is_cmt cmt && Line.starts_new_item line
-               && Line.indent line = Line.indent first
-               && Line.indent line <= Line.indent last
-               && not (Line.expects_followup last) ->
+          when Line.is_cmt cmt
+               && Line.break_according_to_tokens ~first ~last line ->
             ([line; cmt], concat prev_lines :: ret, t)
         | _ -> (line :: prev_lines, ret, t) )
       | _ ->
-          if
-            Line.starts_new_item line
-            && Line.indent line = Line.indent first
-            && Line.indent line <= Line.indent last
-            && not (Line.expects_followup last)
-          then ([line], concat prev_lines :: ret, t)
+          if Line.break_according_to_tokens ~first ~last line then
+            ([line], concat prev_lines :: ret, t)
           else (line :: prev_lines, ret, t) ) )
 
 let split_according_to_semisemi ~prev_lines ~ret Location.{txt= line; _} t =
