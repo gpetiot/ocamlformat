@@ -115,6 +115,7 @@ let tests =
   ; ("non overlapping interval tree", Test_noit.tests)
   ; ("Ast", Test_ast.tests)
   ; ("Cmt_lexer", Test_cmt_lexer.tests)
+  ; ("Indent", Test_indent.tests)
   ; ("Literal_lexer", Test_literal_lexer.tests)
   ; ("Fmt", Test_fmt.tests)
   ; ("Slicer", Test_slicer.tests) ]
