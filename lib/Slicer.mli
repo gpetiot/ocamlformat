@@ -16,7 +16,10 @@ val split_on_linebreaks : Cmt_lexer.token list -> string Location.loc list
     Exposed for tests. *)
 
 val fragment :
-  'a Migrate_ast.Traverse.fragment -> range:int * int -> string -> string
+     'a Migrate_ast.Traverse.fragment
+  -> range:int * int
+  -> string
+  -> string * (int * int)
 (** [fragment fg ~range x] slices [x] into a smaller string, filtered
     according to the range of lines [range], and containing the relevant
     context so we can infer the indentation to apply to this range of lines. *)

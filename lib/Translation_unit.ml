@@ -393,11 +393,11 @@ let numeric fragment ~input_name ~source ~range conf opts =
   let nlines = List.length lines in
   check_range nlines range
   >>| fun () ->
-  let sliced_source = Slicer.fragment fragment ~range source in
+  let sliced_source, sliced_range = Slicer.fragment fragment ~range source in
   Ocaml_common.Location.input_name := input_name ;
   let fallback () = Indent.Partial_ast.indent_range ~lines ~range in
   let indent_parsed ({ast= parsed_ast; source= parsed_source; _} as parsed)
-      source =
+      source range =
     match
       format fragment ~input_name ~prev_source:source ~parsed conf opts
     with
@@ -414,5 +414,5 @@ let numeric fragment ~input_name ~source ~range conf opts =
   | exception _ -> (
     match parse fragment conf ~source with
     | exception _ -> fallback ()
-    | parsed -> indent_parsed parsed source )
-  | parsed -> indent_parsed parsed sliced_source
+    | parsed -> indent_parsed parsed source range )
+  | parsed -> indent_parsed parsed sliced_source sliced_range
