@@ -15,6 +15,18 @@ val split_on_linebreaks : Cmt_lexer.token list -> string Location.loc list
 
     Exposed for tests. *)
 
+val split_according_to_tokens :
+     range:int * int
+  -> string Location.loc list
+  -> string Location.loc list * (int * int)
+(** Exposed for tests. *)
+
+val split_according_to_semisemi :
+     range:int * int
+  -> string Location.loc list
+  -> string Location.loc list list * (int * int)
+(** Exposed for tests. *)
+
 val fragment :
      'a Migrate_ast.Traverse.fragment
   -> range:int * int

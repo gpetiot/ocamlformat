@@ -125,6 +125,53 @@ let test_lex_comments =
                 ; loc_start=
                     {pos_fname; pos_lnum= 1; pos_bol= 10; pos_cnum= 10}
                 ; loc_end= {pos_fname; pos_lnum= 1; pos_bol= 10; pos_cnum= 19}
-                } } ] ]
+                } } ]
+  ; make_test "let after module"
+      ~input:{|
+module X = struct
+  let x = [
+
+  let y = bar
+end
+
+let f =
+|}
+      ~expected:
+        [ S
+            { txt=
+                "\n\
+                 module X = struct\n\
+                \  let x = [\n\n\
+                \  let y = bar\n\
+                 end\n\n\
+                 let f =\n"
+            ; loc=
+                { loc_ghost= false
+                ; loc_start=
+                    { pos_fname= "_none_"
+                    ; pos_lnum= 0
+                    ; pos_bol= 0
+                    ; pos_cnum= 0 }
+                ; loc_end=
+                    { pos_fname= "_none_"
+                    ; pos_lnum= 8
+                    ; pos_bol= 59
+                    ; pos_cnum= 59 } } } ]
+  ; make_test "2 let 1l split" ~input:"let x = x\nlet y = y"
+      ~expected:
+        [ S
+            { txt= "let x = x\nlet y = y"
+            ; loc=
+                { loc_ghost= false
+                ; loc_start=
+                    { pos_fname= "_none_"
+                    ; pos_lnum= 0
+                    ; pos_bol= 0
+                    ; pos_cnum= 0 }
+                ; loc_end=
+                    { pos_fname= "_none_"
+                    ; pos_lnum= 1
+                    ; pos_bol= 10
+                    ; pos_cnum= 19 } } } ] ]
 
 let tests = test_lex_comments

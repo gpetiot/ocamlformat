@@ -33,7 +33,7 @@ module Line = struct
   let expects_followup str =
     match List.rev (parse str) with
     | [] -> false
-    | (IN | LPAREN | LBRACKET | STRUCT | SIG | BEGIN) :: _ -> true
+    | (IN | LPAREN | LBRACKET | STRUCT | SIG | BEGIN | EQUAL) :: _ -> true
     | _ -> false
 
   let starts_with tok str =
@@ -123,31 +123,7 @@ let split_on_linebreaks lexed : string Location.loc list =
   in
   List.rev (aux [] ~break:false lexed)
 
-let concat x dst =
-  match x with
-  | [] -> dst
-  | [s] -> s :: dst
-  | (h : string Location.loc) :: t ->
-      List.fold_left t ~init:h ~f:(fun acc (x : string Location.loc) ->
-          { txt= x.txt ^ "\n" ^ acc.txt
-          ; loc= {acc.loc with loc_start= x.loc.loc_start} } )
-      :: dst
-
-let split input ~f ~range =
-  let rec aux ~ret ~prev_lines ~range = function
-    | [] -> (concat prev_lines ret, range)
-    | h :: t ->
-        let prev_lines, ret, t, range = f ~prev_lines ~ret ~range h t in
-        aux ~ret ~prev_lines t ~range
-  in
-  Cmt_lexer.lex_comments input
-  |> split_on_linebreaks
-  |> aux ~ret:[] ~prev_lines:[] ~range
-  |> fun (x, range) ->
-  List.map x ~f:(fun Location.{txt; _} -> String.strip txt)
-  |> List.filter ~f:(Fn.non String.is_empty)
-  |> List.rev
-  |> fun x -> (x, range)
+let concat = List.append
 
 let split_according_to_tokens ~prev_lines ~ret ~range:((low, high) as range)
     (line : string Location.loc) (t : string Location.loc list) =
@@ -172,7 +148,8 @@ let split_according_to_tokens ~prev_lines ~ret ~range:((low, high) as range)
             if range_starts_after then
               (* The [range] starts after this item, we can discard the items
                  already added in [ret]. *)
-              ([line; cmt], [], t, range)
+              let ldiff = cmt.loc.loc_start.pos_lnum in
+              ([line; cmt], [], t, (low - ldiff, high - ldiff))
             else if cmt.loc.loc_start.pos_lnum + 1 > high then
               (* The [range] ends before this item, we can discard what comes
                  after. *)
@@ -190,13 +167,27 @@ let split_according_to_tokens ~prev_lines ~ret ~range:((low, high) as range)
             if range_starts_after then
               (* The [range] starts after this item, we can discard the items
                  already added in [ret]. *)
-              ([line], [], t, range)
+              let ldiff = line.loc.loc_start.pos_lnum in
+              ([line], [], t, (low - ldiff, high - ldiff))
             else if line.loc.loc_start.pos_lnum + 1 > high then
               (* The [range] ends before this item, we can discard what comes
                  after. *)
               ([], concat prev_lines ret, [], range)
             else ([line], concat prev_lines ret, t, range)
           else (line :: prev_lines, ret, t, range) ) )
+
+let split_according_to_tokens ~range =
+  let rec aux ~ret ~prev_lines ~range = function
+    | [] -> (List.rev @@ concat prev_lines ret, range)
+    | h :: t ->
+        let prev_lines, ret, t, range =
+          split_according_to_tokens ~prev_lines ~ret ~range h t
+        in
+        aux ~ret ~prev_lines t ~range
+  in
+  aux ~ret:[] ~prev_lines:[] ~range
+
+let concat x l = match x with [] -> l | _ :: _ -> x :: l
 
 let split_according_to_semisemi ~prev_lines ~ret
     ~range:((low, high) as range) (line : string Location.loc) t =
@@ -205,35 +196,61 @@ let split_according_to_semisemi ~prev_lines ~ret
     let before = concat prev_lines ret in
     let range_starts_after =
       match before with
-      | [] -> true
-      | x :: _ -> x.loc.loc_end.pos_lnum + 1 < low
+      | ((x : string Location.loc) :: _) :: _ ->
+          x.loc.loc_end.pos_lnum + 1 < low
+      | _ -> true
     in
     if range_starts_after then
       (* The [range] starts after this item, we can discard the items already
          added in [ret]. *)
-      ([line], [], t, range)
+      let ldiff = line.loc.loc_start.pos_lnum in
+      ([line], [], t, (low - ldiff, high - ldiff))
     else if line.loc.loc_start.pos_lnum + 1 > high then
       (* The [range] ends before this item, we can discard what comes after. *)
-      ([], concat prev_lines ret, [], range)
-    else ([line], concat prev_lines ret, t, range)
+      ([], before, [], range)
+    else ([line], before, t, range)
   else (line :: prev_lines, ret, t, range)
 
-let split_nontoplevel = split ~f:split_according_to_tokens
+let split_according_to_semisemi ~range =
+  let rec aux ~ret ~prev_lines ~range = function
+    | [] -> (concat (List.rev prev_lines) ret, range)
+    | h :: t ->
+        let prev_lines, ret, t, range =
+          split_according_to_semisemi ~prev_lines ~ret ~range h t
+        in
+        aux ~ret ~prev_lines t ~range
+  in
+  aux ~ret:[] ~prev_lines:[] ~range
+
+let split_non_toplevel input ~range =
+  Cmt_lexer.lex_comments input
+  |> split_on_linebreaks
+  |> split_according_to_tokens ~range
+  |> fun (x, range) ->
+  ( List.map x ~f:(fun Location.{txt; _} -> String.strip txt)
+    |> List.filter ~f:(Fn.non String.is_empty)
+  , range )
 
 let split_toplevel input ~range =
-  split ~f:split_according_to_semisemi input ~range
+  Cmt_lexer.lex_comments input
+  |> split_on_linebreaks
+  |> split_according_to_semisemi ~range
   |> fun (x, range) ->
-  List.fold_left ~init:([], range) x ~f:(fun (acc, range) str ->
-      let x, range = split_nontoplevel ~range str in
+  List.fold_left ~init:([], range) x ~f:(fun (acc, range) itm ->
+      let x, range = split_according_to_tokens itm ~range in
       (List.rev_append x acc, range) )
-  |> fun (x, range) -> (List.rev x, range)
+  |> fun (x, range) ->
+  ( List.map x ~f:(fun Location.{txt; _} -> String.strip txt)
+    |> List.filter ~f:(Fn.non String.is_empty)
+    |> List.rev
+  , range )
 
-let merge =
-  List.fold_left ~init:"" ~f:(fun x y ->
-      match x with "" -> y | _ -> x ^ "\n\n" ^ y )
+let str_concat x y = match x with "" -> y | _ -> x ^ "\n\n" ^ y
+
+let merge = List.fold_left ~init:"" ~f:str_concat
 
 let fragment (type a) (fg : a Migrate_ast.Traverse.fragment) ~range input =
   ( match fg with
   | Structure | Use_file -> split_toplevel input ~range
-  | Signature -> split_nontoplevel input ~range )
+  | Signature -> split_non_toplevel input ~range )
   |> fun (x, range) -> (merge x, range)
