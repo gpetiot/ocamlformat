@@ -20,6 +20,22 @@ let test_lex_comments =
   let loc_ghost = false in
   let pos_fname = "_none_" in
   [ make_test "empty" ~input:"" ~expected:[]
+  ; make_test "multi empty" ~input:"\n\n"
+      ~expected:
+        [ S
+            { txt= "\n\n"
+            ; loc=
+                { loc_ghost= false
+                ; loc_start=
+                    { pos_fname= "_none_"
+                    ; pos_lnum= 0
+                    ; pos_bol= 0
+                    ; pos_cnum= 0 }
+                ; loc_end=
+                    { pos_fname= "_none_"
+                    ; pos_lnum= 2
+                    ; pos_bol= 2
+                    ; pos_cnum= 2 } } } ]
   ; make_test "cmt before" ~input:"(* fooooooooooooo *)\nbar\n"
       ~expected:
         [ Cmt
@@ -172,6 +188,38 @@ let f =
                     { pos_fname= "_none_"
                     ; pos_lnum= 1
                     ; pos_bol= 10
-                    ; pos_cnum= 19 } } } ] ]
+                    ; pos_cnum= 19 } } } ]
+  ; make_test "already formatted"
+      ~input:
+        {|let foooooo =
+  let baaaaar =
+    let woooooo = foooooo in
+    let xooooo = bar + foo in
+    woooooo
+  in
+  bar
+|}
+      ~expected:
+        [ S
+            { txt=
+                "let foooooo =\n\
+                \  let baaaaar =\n\
+                \    let woooooo = foooooo in\n\
+                \    let xooooo = bar + foo in\n\
+                \    woooooo\n\
+                \  in\n\
+                \  bar\n"
+            ; loc=
+                { loc_ghost= false
+                ; loc_start=
+                    { pos_fname= "_none_"
+                    ; pos_lnum= 0
+                    ; pos_bol= 0
+                    ; pos_cnum= 0 }
+                ; loc_end=
+                    { pos_fname= "_none_"
+                    ; pos_lnum= 7
+                    ; pos_bol= 112
+                    ; pos_cnum= 112 } } } ] ]
 
 let tests = test_lex_comments

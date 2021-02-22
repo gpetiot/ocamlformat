@@ -9,6 +9,13 @@
 (*                                                                        *)
 (**************************************************************************)
 
+val split :
+     range:int * int
+  -> split_on_semisemi:bool
+  -> Cmt_lexer.token list
+  -> string * (int * int)
+(** Exposed for tests. *)
+
 val split_on_linebreaks : Cmt_lexer.token list -> string Location.loc list
 (** [split_on_linebreaks tokens] returns a list of lines based on the
     [tokens].
