@@ -220,6 +220,53 @@ let f =
                     { pos_fname= "_none_"
                     ; pos_lnum= 7
                     ; pos_bol= 112
-                    ; pos_cnum= 112 } } } ] ]
+                    ; pos_cnum= 112 } } } ]
+  ; make_test "ill-indent"
+      ~input:
+        {|   let () =
+ ffff;
+     hhhhhh;
+        fff;
+ let (quot, _rem) =
+   let quot_rem n k =
+     let (d, m) = (n / k, n mod k) in
+     if d < 0 && m > 0 then (d+1, m-k)
+else (d, m)
+    in
+    let quot n k = fst (quot_rem n k) in
+    let rem n k = snd (quot_rem n k) in
+
+quot, rem
+|}
+      ~expected:
+        [ S
+            { txt=
+                {|   let () =
+ ffff;
+     hhhhhh;
+        fff;
+ let (quot, _rem) =
+   let quot_rem n k =
+     let (d, m) = (n / k, n mod k) in
+     if d < 0 && m > 0 then (d+1, m-k)
+else (d, m)
+    in
+    let quot n k = fst (quot_rem n k) in
+    let rem n k = snd (quot_rem n k) in
+
+quot, rem
+|}
+            ; loc=
+                { loc_ghost= false
+                ; loc_start=
+                    { pos_fname= "_none_"
+                    ; pos_lnum= 0
+                    ; pos_bol= 0
+                    ; pos_cnum= 0 }
+                ; loc_end=
+                    { pos_fname= "_none_"
+                    ; pos_lnum= 14
+                    ; pos_bol= 275
+                    ; pos_cnum= 275 } } } ] ]
 
 let tests = test_lex_comments

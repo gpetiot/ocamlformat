@@ -185,7 +185,55 @@ let f =
   in
   bar
 |}
-      ~new_range:(1, 7) ]
+      ~new_range:(1, 7)
+  ; make_test "ill-indent" ~range:(1, 14) ~split_on_semisemi:true
+      ~input:
+        [ S
+            { txt=
+                {|   let () =
+ ffff;
+     hhhhhh;
+        fff;
+ let (quot, _rem) =
+   let quot_rem n k =
+     let (d, m) = (n / k, n mod k) in
+     if d < 0 && m > 0 then (d+1, m-k)
+else (d, m)
+    in
+    let quot n k = fst (quot_rem n k) in
+    let rem n k = snd (quot_rem n k) in
+
+quot, rem
+|}
+            ; loc=
+                { loc_ghost= false
+                ; loc_start=
+                    { pos_fname= "_none_"
+                    ; pos_lnum= 0
+                    ; pos_bol= 0
+                    ; pos_cnum= 0 }
+                ; loc_end=
+                    { pos_fname= "_none_"
+                    ; pos_lnum= 14
+                    ; pos_bol= 275
+                    ; pos_cnum= 275 } } } ]
+      ~expected:
+        {|   let () =
+ ffff;
+     hhhhhh;
+        fff;
+ let (quot, _rem) =
+   let quot_rem n k =
+     let (d, m) = (n / k, n mod k) in
+     if d < 0 && m > 0 then (d+1, m-k)
+else (d, m)
+    in
+    let quot n k = fst (quot_rem n k) in
+    let rem n k = snd (quot_rem n k) in
+
+quot, rem
+|}
+      ~new_range:(1, 14) ]
 
 let test_use_file =
   let make_test name ~range ~input ~expected ~new_range =
