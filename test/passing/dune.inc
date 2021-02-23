@@ -1947,7 +1947,7 @@
  (deps .ocamlformat )
  (action
    (with-outputs-to partial.ml.output
-     (run %{bin:ocamlformat} --format-invalid-files=auto %{dep:partial.ml}))))
+     (run %{bin:ocamlformat} --numeric=1-14 %{dep:partial.ml}))))
 
 (rule
  (alias runtest)
@@ -1957,7 +1957,7 @@
  (deps .ocamlformat )
  (action
    (with-outputs-to partial_double_quotes.ml.output
-     (run %{bin:ocamlformat} --format-invalid-files=auto %{dep:partial_double_quotes.ml}))))
+     (run %{bin:ocamlformat} --numeric=1-1 %{dep:partial_double_quotes.ml}))))
 
 (rule
  (alias runtest)
