@@ -917,8 +917,18 @@
 (rule
  (deps .ocamlformat )
  (action
+   (with-outputs-to format_invalid_files-0.ml.output
+     (run %{bin:ocamlformat} --numeric=11-13 %{dep:format_invalid_files.ml}))))
+
+(rule
+ (alias runtest)
+ (action (diff format_invalid_files-0.ml.ref format_invalid_files-0.ml.output)))
+
+(rule
+ (deps .ocamlformat )
+ (action
    (with-outputs-to format_invalid_files.ml.output
-     (run %{bin:ocamlformat} --format-invalid-files=auto %{dep:format_invalid_files.ml}))))
+     (run %{bin:ocamlformat} --numeric=7-8 %{dep:format_invalid_files.ml}))))
 
 (rule
  (alias runtest)
@@ -928,7 +938,7 @@
  (deps .ocamlformat )
  (action
    (with-outputs-to format_invalid_files_with_locations.ml.output
-     (run %{bin:ocamlformat} --format-invalid-files=auto --max-iter 3 %{dep:format_invalid_files_with_locations.ml}))))
+     (run %{bin:ocamlformat} --numeric=1-11 %{dep:format_invalid_files_with_locations.ml}))))
 
 (rule
  (alias runtest)
