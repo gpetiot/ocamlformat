@@ -12,6 +12,7 @@
 (** OCamlFormat-RPC *)
 
 open Ocamlformat_lib
+open Ocamlformat_rpc_lib
 
 ;;
 Caml.at_exit (Format.pp_print_flush Format.err_formatter)
@@ -40,38 +41,37 @@ let format fg conf source =
 
 let rec rpc_main = function
   | Waiting_for_version -> (
-    match Ocamlformat_rpc_lib.Init.read_input stdin with
+    match Init.read_input stdin with
     | `Halt -> Ok ()
     | `Unknown -> Ok ()
     | `Version vstr -> (
       match V.is_handled vstr with
       | Some v ->
-          Ocamlformat_rpc_lib.Init.output stdout (`Version vstr) ;
+          Init.output stdout (`Version vstr) ;
           Out_channel.flush stdout ;
           rpc_main (Version_defined (v, Conf.default_profile))
       | None -> (
         match V.propose_another vstr with
         | Some v ->
             let vstr = V.to_string v in
-            Ocamlformat_rpc_lib.Init.output stdout (`Version vstr) ;
+            Init.output stdout (`Version vstr) ;
             rpc_main Waiting_for_version
         | None -> Ok () ) ) )
   | Version_defined (v, conf) as state -> (
     match v with
     | V1 -> (
-      match Ocamlformat_rpc_lib.V1.read_input stdin with
+      match V1.read_input stdin with
       | `Halt -> Ok ()
       | `Unknown | `Error _ -> rpc_main state
       | `Format x ->
           List.fold_until ~init:()
             ~finish:(fun () ->
-              Ocamlformat_rpc_lib.V1.output stdout
-                (`Error (Format.flush_str_formatter ())) )
+              V1.output stdout (`Error (Format.flush_str_formatter ())) )
             ~f:(fun () try_formatting ->
               match try_formatting conf x with
               | Ok formatted ->
                   ignore (Format.flush_str_formatter ()) ;
-                  Ocamlformat_rpc_lib.V1.output stdout (`Format formatted) ;
+                  V1.output stdout (`Format formatted) ;
                   Stop ()
               | Error e ->
                   Translation_unit.Error.print ~fmt:Format.str_formatter
@@ -102,7 +102,7 @@ let rec rpc_main = function
           in
           match update conf c with
           | Ok conf ->
-              Ocamlformat_rpc_lib.V1.output stdout (`Config c) ;
+              V1.output stdout (`Config c) ;
               Out_channel.flush stdout ;
               rpc_main (Version_defined (v, conf))
           | Error e ->
@@ -118,7 +118,7 @@ let rec rpc_main = function
                 | `Unknown (x, y) ->
                     Format.sprintf "Unknown configuration value (%s, %s)" x y
               in
-              Ocamlformat_rpc_lib.V1.output stdout (`Error msg) ;
+              V1.output stdout (`Error msg) ;
               Out_channel.flush stdout ;
               rpc_main state ) ) )
 
