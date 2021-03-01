@@ -23,9 +23,9 @@ Caml.at_exit (Format_.pp_print_flush Format_.err_formatter)
 module V = struct
   type t = V1
 
-  let is_handled = function "v1" | "V1" -> Some V1 | _ -> None
-
-  let propose_another = function "v1" | "V1" -> None | _ -> Some V1
+  let handshake = function
+    | "v1" | "V1" -> `Handled V1
+    | _ -> `Propose_another V1
 
   let to_string = function V1 -> "v1"
 end
@@ -45,18 +45,16 @@ let rec rpc_main = function
     | `Halt -> Ok ()
     | `Unknown -> Ok ()
     | `Version vstr -> (
-      match V.is_handled vstr with
-      | Some v ->
+      match V.handshake vstr with
+      | `Handled v ->
           Init.output stdout (`Version vstr) ;
           Out_channel.flush stdout ;
           rpc_main (Version_defined (v, Conf.default_profile))
-      | None -> (
-        match V.propose_another vstr with
-        | Some v ->
-            let vstr = V.to_string v in
-            Init.output stdout (`Version vstr) ;
-            rpc_main Waiting_for_version
-        | None -> Ok () ) ) )
+      | `Propose_another v ->
+          let vstr = V.to_string v in
+          Init.output stdout (`Version vstr) ;
+          Out_channel.flush stdout ;
+          rpc_main Waiting_for_version ) )
   | Version_defined (v, conf) as state -> (
     match v with
     | V1 -> (
