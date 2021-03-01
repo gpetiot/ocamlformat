@@ -4564,6 +4564,8 @@ let fmt_file (type a) ~ctx ~fmt_code ~debug (fragment : a Traverse.fragment)
   | Traverse.Module_type, mty ->
       compose_module ~f:Fn.id
         (fmt_module_type c (sub_mty ~ctx:(Mty mty) mty))
+  | Traverse.Expression, e ->
+      fmt_expression c (sub_exp ~ctx:(Str (Ast_helper.Str.eval e)) e)
 
 let fmt_code ~debug =
   let rec fmt_code conf s =

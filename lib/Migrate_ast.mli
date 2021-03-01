@@ -100,6 +100,7 @@ module Traverse : sig
     | Use_file : Parsetree.toplevel_phrase list fragment
     | Core_type : Parsetree.core_type fragment
     | Module_type : Parsetree.module_type fragment
+    | Expression : Parsetree.expression fragment
 
   val equal : 'a fragment -> 'a -> 'a -> bool
 

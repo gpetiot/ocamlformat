@@ -24,6 +24,8 @@ module Parsetree = struct
     Poly.equal
 
   let equal_module_type : module_type -> module_type -> bool = Poly.equal
+
+  let equal_expression : expression -> expression -> bool = Poly.equal
 end
 
 module Asttypes = struct
@@ -45,6 +47,7 @@ module Traverse = struct
     | Use_file : Parsetree.toplevel_phrase list fragment
     | Core_type : Parsetree.core_type fragment
     | Module_type : Parsetree.module_type fragment
+    | Expression : Parsetree.expression fragment
 
   let equal (type a) (x : a fragment) : a -> a -> bool =
     match x with
@@ -53,6 +56,7 @@ module Traverse = struct
     | Use_file -> List.equal Parsetree.equal_toplevel_phrase
     | Core_type -> Parsetree.equal_core_type
     | Module_type -> Parsetree.equal_module_type
+    | Expression -> Parsetree.equal_expression
 
   let map (type a) (x : a fragment) (m : Ppxlib.Ast_traverse.map) : a -> a =
     match x with
@@ -61,6 +65,7 @@ module Traverse = struct
     | Use_file -> m#list m#toplevel_phrase
     | Core_type -> m#core_type
     | Module_type -> m#module_type
+    | Expression -> m#expression
 
   let iter (type a) (fragment : a fragment) (i : Ppxlib.Ast_traverse.iter) :
       a -> unit =
@@ -70,6 +75,7 @@ module Traverse = struct
     | Use_file -> i#list i#toplevel_phrase
     | Core_type -> i#core_type
     | Module_type -> i#module_type
+    | Expression -> i#expression
 
   let fold (type a) (fragment : a fragment) (f : _ Ppxlib.Ast_traverse.fold)
       : a -> _ =
@@ -79,6 +85,7 @@ module Traverse = struct
     | Use_file -> f#list f#toplevel_phrase
     | Core_type -> f#core_type
     | Module_type -> f#module_type
+    | Expression -> f#expression
 end
 
 module Parse = struct
@@ -107,6 +114,8 @@ module Parse = struct
         failwith
           (Format.sprintf "Syntax error: %s is not a module type" input)
 
+  let expression = Ppxlib_ast.Parse.expression
+
   let fragment (type a) (fragment : a Traverse.fragment) lexbuf : a =
     match fragment with
     | Traverse.Structure -> implementation lexbuf
@@ -114,6 +123,7 @@ module Parse = struct
     | Traverse.Use_file -> use_file lexbuf
     | Traverse.Core_type -> core_type lexbuf
     | Traverse.Module_type -> module_type lexbuf
+    | Traverse.Expression -> expression lexbuf
 
   let parser_version = Ocaml_version.sys_version
 end
@@ -143,6 +153,7 @@ module Printast = struct
     | Traverse.Use_file -> use_file
     | Traverse.Core_type -> core_type
     | Traverse.Module_type -> module_type
+    | Traverse.Expression -> expression
 end
 
 module Pprintast = Ppxlib.Pprintast

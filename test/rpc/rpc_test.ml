@@ -150,6 +150,8 @@ let () =
   protect_string @@ V1.config [("margin", "80")] ;
   protect_string @@ V1.format "aaa -> bbb -> ccc -> ddd -> eee -> fff -> ggg" ;
   protect_string @@ V1.format "val x :\n \nint" ;
+  protect_string @@ V1.format "x + y * z" ;
+  protect_string @@ V1.format "let x = 4 in x" ;
   protect_string @@ V1.format "sig end" ;
   protect_string
   @@ V1.format

@@ -94,7 +94,13 @@ let test_parse_and_format_module_type =
             -> unit -> t\n\
             end\n" ) ]
 
+let test_parse_and_format_expression =
+  let make_test = test_parse_and_format ~fg:Expression in
+  [ make_test "List.map" ~input:"List.map (fun x->\nx*x) [(1 + 9); 2;3] "
+      ~expected:(Ok "List.map (fun x -> x * x) [ 1 + 9; 2; 3 ]\n") ]
+
 let tests =
   List.concat
     [ test_parse_and_format_core_type @ test_parse_and_format_signature
-      @ test_parse_and_format_use_file @ test_parse_and_format_module_type ]
+      @ test_parse_and_format_use_file @ test_parse_and_format_module_type
+      @ test_parse_and_format_expression ]

@@ -83,11 +83,12 @@ let rec rpc_main = function
                file (toplevel phrases) anyway.
 
                `ocaml-lsp` should use core types, module types and
-               signatures. `ocaml-mdx` should use toplevel phrases and
-               signatures. *)
+               signatures. `ocaml-mdx` should use toplevel phrases,
+               expressions and signatures. *)
             [ format Core_type
             ; format Signature
             ; format Module_type
+            ; format Expression
             ; format Use_file ] ;
           rpc_main state
       | `Config c -> (

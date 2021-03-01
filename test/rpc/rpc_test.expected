@@ -45,6 +45,15 @@ int'
 Sent (Format"val x :\n \nint")
 Output: val x : int
 
+Format 'x + y * z'
+Sent (Format"x + y * z")
+Output: x + (y * z)
+
+Format 'let x = 4 in x'
+Sent (Format"let x = 4 in x")
+Output: let x = 4 in
+x
+
 Format 'sig end'
 Sent (Format"sig end")
 Output: sig end

@@ -247,6 +247,7 @@ let recover (type a) : a Traverse.fragment -> _ = function
   | Traverse.Use_file -> Parse_wyc.Make_parsable.use_file
   | Traverse.Core_type -> failwith "no recovery for core_type"
   | Traverse.Module_type -> failwith "no recovery for module_type"
+  | Traverse.Expression -> failwith "no recovery for expression"
 
 let format fragment ?output_file ~input_name ~prev_source ~parsed conf opts =
   let open Result.Monad_infix in
