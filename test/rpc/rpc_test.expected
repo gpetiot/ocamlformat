@@ -1,11 +1,11 @@
 Starting then doing nothing
-[ocf] proposed version v1
-[ocf] server accepted version v1
+[ocf] proposed versions: v1
+[ocf] implementation v1 selected
 Sent Halt
 Sending Type requests
+[ocf] proposed versions: v1
+[ocf] implementation v1 selected
 Format 'char -> string'
-[ocf] proposed version v1
-[ocf] server accepted version v1
 Sent (Format"char -> string")
 Output: char -> string
 

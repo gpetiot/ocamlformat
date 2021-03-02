@@ -30,3 +30,12 @@ module V1 :
           | `Error of string
           | `Config of (string * string) list
           | `Format of string ]
+
+val pick_impl :
+     in_channel
+  -> out_channel
+  -> string list
+  -> ((module V), [`Msg of string]) result
+(** [pick_impl in out versions] returns the most-fitting implementation
+    according to a list of [versions], that is a list ordered from the most
+    to the least wished version. *)

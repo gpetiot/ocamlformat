@@ -11,59 +11,14 @@ module Sexp = Sexplib0.Sexp
 module Csexp = Csexp.Make (Sexp)
 module Ocf = Ocamlformat_rpc_lib
 
-module V = struct
-  type t = Unknown | V1
-
-  let equal x y = match (x, y) with V1, V1 -> true | _ -> false
-
-  let to_string = function Unknown -> "?" | V1 -> "v1"
-
-  let is_handled = function "v1" | "V1" -> Some V1 | _ -> None
-
-  (* Supported versions by decreasing order *)
-  let supported_versions = [V1]
-end
-
 type process =
-  {pid: int; input: in_channel; output: out_channel; version: V.t}
+  {pid: int; input: in_channel; output: out_channel; impl: (module Ocf.V)}
 
 let running_process : process option ref = ref None
 
 let log = Format.printf
 
-let negociate_version {input; output; _} =
-  let rec aux = function
-    | [] -> Error "Version negociation failed"
-    | latest :: others -> (
-        let latest = V.to_string latest in
-        let version = `Version latest in
-        log "[ocf] proposed version %s\n%!" latest ;
-        Csexp.to_channel output (Ocf.Init.to_sexp version) ;
-        flush output ;
-        match Ocf.Init.read_input input with
-        | `Version v when v = latest -> (
-          match V.is_handled v with
-          | Some v ->
-              log "[ocf] server accepted version %s\n%!" latest ;
-              Ok v
-          | None -> failwith "impossible" )
-        | `Version vstr -> (
-            log "Server proposed version: %s\n%!" vstr ;
-            match V.is_handled vstr with
-            | Some v ->
-                log "Version %s is supported\n%!" vstr ;
-                if List.mem v others then Ok v else aux others
-            | None ->
-                log "Version %s is not supported\n%!" vstr ;
-                aux others )
-        | `Unknown ->
-            log "Server answered unknown\n%!" ;
-            Error "Version negociation failed"
-        | `Halt ->
-            log "Server did not answer with a version\n%!" ;
-            Error "Version negociation failed" )
-  in
-  aux V.supported_versions
+let supported_versions = ["v1"]
 
 let start () =
   let prog = Sys.argv.(1) in
@@ -80,11 +35,16 @@ let start () =
     { pid
     ; input= Unix.in_channel_of_descr out_
     ; output= Unix.out_channel_of_descr in_
-    ; version= V.Unknown }
+    ; impl= (module Ocf.V1) }
   in
-  negociate_version process
-  >>| fun version ->
-  let process = {process with version} in
+  log "[ocf] proposed versions: @[<hv>%a@]\n%!"
+    (Format.pp_print_list
+       ~pp_sep:(fun fs () -> Format.fprintf fs ",@ ")
+       Format.pp_print_string )
+    supported_versions ;
+  Ocf.pick_impl process.input process.output supported_versions
+  >>| fun impl ->
+  let process = {process with impl} in
   running_process := Some process ;
   process
 
@@ -96,65 +56,88 @@ let get_process () =
       let i, _ = Unix.waitpid [WNOHANG] p.pid in
       if i = 0 then Ok p else start ()
 
-module V1 = struct
-  let query t =
-    get_process ()
-    >>| fun p ->
-    Ocf.V1.output p.output t ;
-    log "Sent %s\n%!" (Ocf.V1.to_sexp t |> Sexp.to_string) ;
-    Ocf.V1.read_input p.input
+module Client = struct
+  module type S = sig
+    val format : string -> (string, [`Msg of string]) result
 
-  let format x =
-    log "Format '%s'\n%!" x ;
-    match query (`Format x) with
-    | Ok (`Format x) -> Ok x
-    | Ok (`Error msg) -> Error msg
-    | _ -> Error "Unknown error"
+    val config : (string * string) list -> (string, [`Msg of string]) result
 
-  let config x =
-    match query (`Config x) with
-    | Ok (`Config _) -> Ok "configuration updated"
-    | Ok (`Error msg) -> Error msg
-    | _ -> Error "Unknown error"
+    val halt : unit -> (unit, [`Msg of string]) result
+  end
 
-  let halt () =
-    get_process ()
-    >>| fun p ->
-    Ocf.V1.output p.output `Halt ;
-    log "Sent %s\n%!" (Ocf.V1.to_sexp `Halt |> Sexp.to_string) ;
-    close_in p.input ;
-    close_out p.output ;
-    running_process := None
+  module V1 = struct
+    let query t =
+      get_process ()
+      >>| fun p ->
+      Ocf.V1.output p.output t ;
+      log "Sent %s\n%!" (Ocf.V1.to_sexp t |> Sexp.to_string) ;
+      Ocf.V1.read_input p.input
+
+    let format x =
+      log "Format '%s'\n%!" x ;
+      match query (`Format x) with
+      | Ok (`Format x) -> Ok x
+      | Ok (`Error msg) -> Error (`Msg msg)
+      | _ -> Error (`Msg "Unknown error")
+
+    let config x =
+      match query (`Config x) with
+      | Ok (`Config _) -> Ok "configuration updated"
+      | Ok (`Error msg) -> Error (`Msg msg)
+      | _ -> Error (`Msg "Unknown error")
+
+    let halt () =
+      get_process ()
+      >>| fun p ->
+      Ocf.V1.output p.output `Halt ;
+      log "Sent %s\n%!" (Ocf.V1.to_sexp `Halt |> Sexp.to_string) ;
+      close_in p.input ;
+      close_out p.output ;
+      running_process := None
+  end
 end
 
 let protect_unit x =
-  match x with Ok () -> () | Error e -> log "Error: %s\n%!" e
+  match x with Ok () -> () | Error (`Msg e) -> log "Error: %s\n%!" e
 
 let protect_string x =
   match x with
   | Ok s -> log "@[<hv>Output:@;%s@]\n%!" s
-  | Error e -> log "Error: %s\n%!" e
+  | Error (`Msg e) -> log "Error: %s\n%!" e
+
+let get_client () : (module Client.S) =
+  match get_process () with
+  | Ok p -> (
+    match p.impl with
+    | (module V1) ->
+        log "[ocf] implementation v1 selected\n%!" ;
+        (module Client.V1) )
+  | Error (`Msg msg) ->
+      log "[ocf] no implementation selected\n%!" ;
+      failwith msg
 
 let () =
   log "Starting then doing nothing\n%!" ;
-  protect_unit @@ V1.halt ()
+  let module C = (val get_client ()) in
+  protect_unit @@ C.halt ()
 
 let () =
   log "Sending Type requests\n%!" ;
-  protect_string @@ V1.format "char -> string" ;
-  protect_string @@ V1.format "int -> int" ;
-  protect_string @@ V1.format " int    (* foo *) \n\n ->     int  (* bar *)" ;
-  protect_string @@ V1.config [("foo", "bar")] ;
-  protect_string @@ V1.config [("margin", "10")] ;
-  protect_string @@ V1.format "aaa -> bbb -> ccc -> ddd -> eee -> fff -> ggg" ;
-  protect_string @@ V1.config [("margin", "80")] ;
-  protect_string @@ V1.format "aaa -> bbb -> ccc -> ddd -> eee -> fff -> ggg" ;
-  protect_string @@ V1.format "val x :\n \nint" ;
-  protect_string @@ V1.format "x + y * z" ;
-  protect_string @@ V1.format "let x = 4 in x" ;
-  protect_string @@ V1.format "sig end" ;
+  let module C = (val get_client ()) in
+  protect_string @@ C.format "char -> string" ;
+  protect_string @@ C.format "int -> int" ;
+  protect_string @@ C.format " int    (* foo *) \n\n ->     int  (* bar *)" ;
+  protect_string @@ C.config [("foo", "bar")] ;
+  protect_string @@ C.config [("margin", "10")] ;
+  protect_string @@ C.format "aaa -> bbb -> ccc -> ddd -> eee -> fff -> ggg" ;
+  protect_string @@ C.config [("margin", "80")] ;
+  protect_string @@ C.format "aaa -> bbb -> ccc -> ddd -> eee -> fff -> ggg" ;
+  protect_string @@ C.format "val x :\n \nint" ;
+  protect_string @@ C.format "x + y * z" ;
+  protect_string @@ C.format "let x = 4 in x" ;
+  protect_string @@ C.format "sig end" ;
   protect_string
-  @@ V1.format
+  @@ C.format
        "sig\n\n\
        \ val x : foo -> bar\n\
        \  (** this does something *)\n\n\
@@ -172,7 +155,7 @@ let ssmap
   ()
 |}
   in
-  protect_string @@ V1.format some_function ;
-  protect_string @@ V1.config [("profile", "janestreet")] ;
-  protect_string @@ V1.format some_function ;
-  protect_unit @@ V1.halt ()
+  protect_string @@ C.format some_function ;
+  protect_string @@ C.config [("profile", "janestreet")] ;
+  protect_string @@ C.format some_function ;
+  protect_unit @@ C.halt ()

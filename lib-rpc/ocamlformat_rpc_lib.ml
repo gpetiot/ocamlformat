@@ -21,10 +21,10 @@ module type V = sig
   val output : Stdlib.out_channel -> t -> unit
 end
 
+module Csexp = Csexp.Make (Sexp)
+
 module Init : V with type t = [`Halt | `Unknown | `Version of string] =
 struct
-  module Csexp = Csexp.Make (Sexp)
-
   type t = [`Halt | `Unknown | `Version of string]
 
   let read_input in_channel =
@@ -53,8 +53,6 @@ module V1 :
           | `Error of string
           | `Config of (string * string) list
           | `Format of string ] = struct
-  module Csexp = Csexp.Make (Sexp)
-
   type t =
     [ `Halt
     | `Unknown
@@ -98,3 +96,27 @@ module V1 :
     to_sexp t |> Csexp.to_channel channel ;
     Stdlib.flush channel
 end
+
+let get_impl = function "v1" | "V1" -> Some (module V1 : V) | _ -> None
+
+let get_impl_exn x =
+  match get_impl x with Some x -> Ok x | None -> failwith "impossible"
+
+let pick_impl input output versions =
+  let err = Error (`Msg "Version negociation failed") in
+  let rec aux = function
+    | [] -> err
+    | latest :: others -> (
+        let version = `Version latest in
+        Csexp.to_channel output (Init.to_sexp version) ;
+        flush output ;
+        match Init.read_input input with
+        | `Version v when v = latest -> get_impl_exn v
+        | `Version v -> (
+          match others with
+          | h :: _ when v = h -> get_impl_exn v
+          | _ -> aux others )
+        | `Unknown -> aux others
+        | `Halt -> err )
+  in
+  aux versions
