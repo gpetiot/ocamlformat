@@ -10,6 +10,8 @@
 
 #### New features
 
++ Line/region indentation feature for emacs (#1609, @gpetiot)
+
 ### 0.17.0 (2021-02-15)
 
 #### Removed
