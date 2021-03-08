@@ -47,16 +47,9 @@
   base-unix
   cmdliner
   dune-build-info
-  fix
   fpath
   (menhir
    (>= 20180528))
-  (menhirLib
-   (>= 20200624))
-  (menhirSdk
-   (>= 20200624))
-  (ocaml-migrate-parsetree
-   (>= 2.1.0))
   (ocp-indent :with-test)
   (odoc
    (>= 1.4.2))
