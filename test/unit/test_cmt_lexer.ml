@@ -267,6 +267,104 @@ quot, rem
                     { pos_fname= "_none_"
                     ; pos_lnum= 14
                     ; pos_bol= 275
-                    ; pos_cnum= 275 } } } ] ]
+                    ; pos_cnum= 275 } } } ]
+  ; make_test "comment header"
+      ~input:
+        {|(**************************************************************************)
+(**************************************************************************)
+
+module Format = Format_
+
+(** Format OCaml Ast *)
+
+open Migrate_ast
+|}
+      ~expected:
+        [ Cmt
+            { txt=
+                "(**************************************************************************)"
+            ; loc=
+                { loc_ghost= false
+                ; loc_start=
+                    { pos_fname= "_none_"
+                    ; pos_lnum= 0
+                    ; pos_bol= 0
+                    ; pos_cnum= 0 }
+                ; loc_end=
+                    { pos_fname= "_none_"
+                    ; pos_lnum= 0
+                    ; pos_bol= 0
+                    ; pos_cnum= 76 } } }
+        ; S
+            { txt= "\n"
+            ; loc=
+                { loc_ghost= false
+                ; loc_start=
+                    { pos_fname= "_none_"
+                    ; pos_lnum= 0
+                    ; pos_bol= 0
+                    ; pos_cnum= 76 }
+                ; loc_end=
+                    { pos_fname= "_none_"
+                    ; pos_lnum= 1
+                    ; pos_bol= 77
+                    ; pos_cnum= 77 } } }
+        ; Cmt
+            { txt=
+                "(**************************************************************************)"
+            ; loc=
+                { loc_ghost= false
+                ; loc_start=
+                    { pos_fname= "_none_"
+                    ; pos_lnum= 1
+                    ; pos_bol= 77
+                    ; pos_cnum= 77 }
+                ; loc_end=
+                    { pos_fname= "_none_"
+                    ; pos_lnum= 1
+                    ; pos_bol= 77
+                    ; pos_cnum= 153 } } }
+        ; S
+            { txt= "\n\nmodule Format = Format_\n\n"
+            ; loc=
+                { loc_ghost= false
+                ; loc_start=
+                    { pos_fname= "_none_"
+                    ; pos_lnum= 1
+                    ; pos_bol= 77
+                    ; pos_cnum= 153 }
+                ; loc_end=
+                    { pos_fname= "_none_"
+                    ; pos_lnum= 5
+                    ; pos_bol= 180
+                    ; pos_cnum= 180 } } }
+        ; Cmt
+            { txt= "(** Format OCaml Ast *)"
+            ; loc=
+                { loc_ghost= false
+                ; loc_start=
+                    { pos_fname= "_none_"
+                    ; pos_lnum= 5
+                    ; pos_bol= 180
+                    ; pos_cnum= 180 }
+                ; loc_end=
+                    { pos_fname= "_none_"
+                    ; pos_lnum= 5
+                    ; pos_bol= 180
+                    ; pos_cnum= 203 } } }
+        ; S
+            { txt= "\n\nopen Migrate_ast\n"
+            ; loc=
+                { loc_ghost= false
+                ; loc_start=
+                    { pos_fname= "_none_"
+                    ; pos_lnum= 5
+                    ; pos_bol= 180
+                    ; pos_cnum= 203 }
+                ; loc_end=
+                    { pos_fname= "_none_"
+                    ; pos_lnum= 8
+                    ; pos_bol= 222
+                    ; pos_cnum= 222 } } } ] ]
 
 let tests = test_lex_comments

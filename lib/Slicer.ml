@@ -168,28 +168,28 @@ let split ~range:((low, high) as range) ~split_on_semisemi = function
       let start_i, start_lex, start_pos, ldiff =
         match start_lex with
         | S {txt; loc} ->
-            let rec aux lnum i =
+            let rec aux ~lnum i =
               if lnum = low - 1 then i
               else
                 match String.unsafe_get txt i with
-                | '\n' -> aux (lnum + 1) (i + 1)
-                | _ -> aux lnum (i + 1)
+                | '\n' -> aux ~lnum:(lnum + 1) (i + 1)
+                | _ -> aux ~lnum (i + 1)
             in
-            let pos = aux 0 loc.loc_start.pos_lnum in
+            let pos = aux 0 ~lnum:loc.loc_start.pos_lnum in
             find_start ~pos ~start_i ~split_on_semisemi lexed
         | Cmt _ -> find_start ~start_i ~split_on_semisemi lexed
       in
       let end_i, end_lex, end_pos =
         match end_lex with
         | S {txt; loc} ->
-            let rec aux lnum i =
+            let rec aux ~lnum i =
               if lnum = high - 1 then i
               else
                 match String.unsafe_get txt i with
-                | '\n' -> aux (lnum + 1) (i + 1)
-                | _ -> aux lnum (i + 1)
+                | '\n' -> aux ~lnum:(lnum + 1) (i + 1)
+                | _ -> aux ~lnum (i + 1)
             in
-            let pos = aux 0 loc.loc_start.pos_lnum in
+            let pos = aux 0 ~lnum:loc.loc_start.pos_lnum in
             find_end ~pos ~end_i ~split_on_semisemi lexed
         | Cmt _ -> find_end ~end_i ~split_on_semisemi lexed
       in

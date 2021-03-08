@@ -233,7 +233,97 @@ else (d, m)
 
 quot, rem
 |}
-      ~new_range:(1, 14) ]
+      ~new_range:(1, 14)
+  ; make_test "comment header" ~range:(4, 4) ~new_range:(1, 1)
+      ~split_on_semisemi:true
+      ~input:
+        [ Cmt
+            { txt=
+                "(**************************************************************************)"
+            ; loc=
+                { loc_ghost= false
+                ; loc_start=
+                    { pos_fname= "_none_"
+                    ; pos_lnum= 0
+                    ; pos_bol= 0
+                    ; pos_cnum= 0 }
+                ; loc_end=
+                    { pos_fname= "_none_"
+                    ; pos_lnum= 0
+                    ; pos_bol= 0
+                    ; pos_cnum= 76 } } }
+        ; S
+            { txt= "\n"
+            ; loc=
+                { loc_ghost= false
+                ; loc_start=
+                    { pos_fname= "_none_"
+                    ; pos_lnum= 0
+                    ; pos_bol= 0
+                    ; pos_cnum= 76 }
+                ; loc_end=
+                    { pos_fname= "_none_"
+                    ; pos_lnum= 1
+                    ; pos_bol= 77
+                    ; pos_cnum= 77 } } }
+        ; Cmt
+            { txt=
+                "(**************************************************************************)"
+            ; loc=
+                { loc_ghost= false
+                ; loc_start=
+                    { pos_fname= "_none_"
+                    ; pos_lnum= 1
+                    ; pos_bol= 77
+                    ; pos_cnum= 77 }
+                ; loc_end=
+                    { pos_fname= "_none_"
+                    ; pos_lnum= 1
+                    ; pos_bol= 77
+                    ; pos_cnum= 153 } } }
+        ; S
+            { txt= "\n\nmodule Format = Format_\n\n"
+            ; loc=
+                { loc_ghost= false
+                ; loc_start=
+                    { pos_fname= "_none_"
+                    ; pos_lnum= 1
+                    ; pos_bol= 77
+                    ; pos_cnum= 153 }
+                ; loc_end=
+                    { pos_fname= "_none_"
+                    ; pos_lnum= 5
+                    ; pos_bol= 180
+                    ; pos_cnum= 180 } } }
+        ; Cmt
+            { txt= "(** Format OCaml Ast *)"
+            ; loc=
+                { loc_ghost= false
+                ; loc_start=
+                    { pos_fname= "_none_"
+                    ; pos_lnum= 5
+                    ; pos_bol= 180
+                    ; pos_cnum= 180 }
+                ; loc_end=
+                    { pos_fname= "_none_"
+                    ; pos_lnum= 5
+                    ; pos_bol= 180
+                    ; pos_cnum= 203 } } }
+        ; S
+            { txt= "\n\nopen Migrate_ast\n"
+            ; loc=
+                { loc_ghost= false
+                ; loc_start=
+                    { pos_fname= "_none_"
+                    ; pos_lnum= 5
+                    ; pos_bol= 180
+                    ; pos_cnum= 203 }
+                ; loc_end=
+                    { pos_fname= "_none_"
+                    ; pos_lnum= 8
+                    ; pos_bol= 222
+                    ; pos_cnum= 222 } } } ]
+      ~expected:"module Format = Format_" ]
 
 let test_use_file =
   let make_test name ~range ~input ~expected ~new_range =
@@ -305,7 +395,42 @@ let f =
   in
   bar
 |}
-      ~new_range:(1, 7) ]
+      ~new_range:(1, 7)
+  ; make_test "already formatted function" ~range:(9, 9)
+      ~input:
+        {|let x = x
+
+let fmt_expressions c width sub_exp exprs fmt_expr
+    (p : Params.elements_collection) =
+  match c.conf.break_collection_expressions with
+  | `Fit_or_vertical -> fmt_elements_collection p fmt_expr exprs
+  | `Wrap ->
+      let is_simple x = is_simple c.conf width (sub_exp x) in
+      let break x1 x2 = not (is_simple x1 && is_simple x2) in
+      let grps = List.group exprs ~break in
+      let fmt_grp ~first:first_grp ~last:last_grp exprs =
+        fmt_elements_collection ~first_sep:first_grp ~last_sep:last_grp p
+          fmt_expr exprs
+      in
+      list_fl grps fmt_grp
+
+let y = y|}
+      ~new_range:(7, 7)
+      ~expected:
+        {|let fmt_expressions c width sub_exp exprs fmt_expr
+    (p : Params.elements_collection) =
+  match c.conf.break_collection_expressions with
+  | `Fit_or_vertical -> fmt_elements_collection p fmt_expr exprs
+  | `Wrap ->
+      let is_simple x = is_simple c.conf width (sub_exp x) in
+      let break x1 x2 = not (is_simple x1 && is_simple x2) in
+      let grps = List.group exprs ~break in
+      let fmt_grp ~first:first_grp ~last:last_grp exprs =
+        fmt_elements_collection ~first_sep:first_grp ~last_sep:last_grp p
+          fmt_expr exprs
+      in
+      list_fl grps fmt_grp|}
+  ]
 
 let test_interface =
   let make_test name ~range ~input ~expected ~new_range =
@@ -321,4 +446,35 @@ let test_interface =
   ; make_test "multi empty" ~range:(1, 3) ~input:"\n\n" ~expected:"\n\n"
       ~new_range:(1, 3) ]
 
-let tests = test_split @ test_use_file @ test_interface
+let test_use_file_file =
+  let fmt_ast_source = Stdio.In_channel.read_all "../../lib/Fmt_ast.ml" in
+  let make_test name ~range ~input ~expected ~new_range =
+    let test_name = "use_file (file): " ^ name in
+    let test_fun () =
+      let actual = fragment Use_file input ~range in
+      Alcotest.(check (pair string (pair int int)))
+        test_name (expected, new_range) actual
+    in
+    (test_name, `Quick, test_fun)
+  in
+  [ make_test "fmt_ast.ml (12)" ~range:(12, 12) ~input:fmt_ast_source
+      ~new_range:(1, 1) ~expected:{|module Format = Format_|}
+  ; make_test "fmt_ast.ml (111)" ~range:(111, 111) ~input:fmt_ast_source
+      ~new_range:(8, 8)
+      ~expected:
+        {|let fmt_expressions c width sub_exp exprs fmt_expr
+    (p : Params.elements_collection) =
+  match c.conf.break_collection_expressions with
+  | `Fit_or_vertical -> fmt_elements_collection p fmt_expr exprs
+  | `Wrap ->
+      let is_simple x = is_simple c.conf width (sub_exp x) in
+      let break x1 x2 = not (is_simple x1 && is_simple x2) in
+      let grps = List.group exprs ~break in
+      let fmt_grp ~first:first_grp ~last:last_grp exprs =
+        fmt_elements_collection ~first_sep:first_grp ~last_sep:last_grp p
+          fmt_expr exprs
+      in
+      list_fl grps fmt_grp|}
+  ]
+
+let tests = test_split @ test_use_file @ test_interface @ test_use_file_file

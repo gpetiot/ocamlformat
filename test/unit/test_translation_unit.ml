@@ -142,6 +142,59 @@ foooooo|}
       [
         fun x ->
           foooooo|}
+      )
+  ; make_test "already formatted function"
+      ~source:
+        {|let fmt_expressions c width sub_exp exprs fmt_expr
+    (p : Params.elements_collection) =
+  match c.conf.break_collection_expressions with
+  | `Fit_or_vertical -> fmt_elements_collection p fmt_expr exprs
+  | `Wrap ->
+      let is_simple x = is_simple c.conf width (sub_exp x) in
+      let break x1 x2 = not (is_simple x1 && is_simple x2) in
+      let grps = List.group exprs ~break in
+      let fmt_grp ~first:first_grp ~last:last_grp exprs =
+        fmt_elements_collection ~first_sep:first_grp ~last_sep:last_grp p
+          fmt_expr exprs
+      in
+      list_fl grps fmt_grp|}
+      ~range:(7, 7)
+      (Ok
+         {|let fmt_expressions c width sub_exp exprs fmt_expr
+    (p : Params.elements_collection) =
+  match c.conf.break_collection_expressions with
+  | `Fit_or_vertical -> fmt_elements_collection p fmt_expr exprs
+  | `Wrap ->
+      let is_simple x = is_simple c.conf width (sub_exp x) in
+      let break x1 x2 = not (is_simple x1 && is_simple x2) in
+      let grps = List.group exprs ~break in
+      let fmt_grp ~first:first_grp ~last:last_grp exprs =
+        fmt_elements_collection ~first_sep:first_grp ~last_sep:last_grp p
+          fmt_expr exprs
+      in
+      list_fl grps fmt_grp|}
       ) ]
 
-let tests = test_numeric
+let test_numeric_file =
+  let fmt_ast_source = Stdio.In_channel.read_all "../../lib/Fmt_ast.ml" in
+  let make_test name ~source ~range ~expected =
+    let test_name = "numeric (file): " ^ name in
+    ( test_name
+    , `Quick
+    , fun () ->
+        let open Ocamlformat_lib in
+        let opts = Conf.{debug= false; margin_check= false} in
+        let got =
+          Translation_unit.numeric Use_file ~input_name:"_" ~source ~range
+            Conf.default_profile opts
+        in
+        Alcotest.check
+          Alcotest.(result (list int) errmsg)
+          test_name expected got )
+  in
+  [ make_test "fmt_ast.ml (26)" ~source:fmt_ast_source ~range:(26, 26)
+      ~expected:(Ok [2])
+  ; make_test "fmt_ast.ml (111)" ~source:fmt_ast_source ~range:(111, 111)
+      ~expected:(Ok [6]) ]
+
+let tests = test_numeric @ test_numeric_file
