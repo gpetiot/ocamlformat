@@ -1,30 +1,25 @@
 Starting then doing nothing
 [ocf] proposed versions: v1
-[ocf] implementation v1 selected
-Sent Halt
+[ocf] client V1 selected
+[ocf] Halt
 Sending Type requests
 [ocf] proposed versions: v1
-[ocf] implementation v1 selected
-Format 'char -> string'
-Sent (Format"char -> string")
+[ocf] client V1 selected
+[ocf] Format 'char -> string'
 Output: char -> string
 
-Format 'int -> int'
-Sent (Format"int -> int")
+[ocf] Format 'int -> int'
 Output: int -> int
 
-Format ' int    (* foo *) 
+[ocf] Format ' int    (* foo *) 
 
  ->     int  (* bar *)'
-Sent (Format" int    (* foo *) \n\n ->     int  (* bar *)")
 Output: int (* foo *) -> int (* bar *)
 
-Sent (Config((foo bar)))
+[ocf] Config
 Error: Unknown configuration value (foo, bar)
-Sent (Config((margin 10)))
-Output: configuration updated
-Format 'aaa -> bbb -> ccc -> ddd -> eee -> fff -> ggg'
-Sent (Format"aaa -> bbb -> ccc -> ddd -> eee -> fff -> ggg")
+[ocf] Config
+[ocf] Format 'aaa -> bbb -> ccc -> ddd -> eee -> fff -> ggg'
 Output: aaa ->
 bbb ->
 ccc ->
@@ -33,32 +28,26 @@ eee ->
 fff ->
 ggg
 
-Sent (Config((margin 80)))
-Output: configuration updated
-Format 'aaa -> bbb -> ccc -> ddd -> eee -> fff -> ggg'
-Sent (Format"aaa -> bbb -> ccc -> ddd -> eee -> fff -> ggg")
+[ocf] Config
+[ocf] Format 'aaa -> bbb -> ccc -> ddd -> eee -> fff -> ggg'
 Output: aaa -> bbb -> ccc -> ddd -> eee -> fff -> ggg
 
-Format 'val x :
+[ocf] Format 'val x :
  
 int'
-Sent (Format"val x :\n \nint")
 Output: val x : int
 
-Format 'x + y * z'
-Sent (Format"x + y * z")
+[ocf] Format 'x + y * z'
 Output: x + (y * z)
 
-Format 'let x = 4 in x'
-Sent (Format"let x = 4 in x")
+[ocf] Format 'let x = 4 in x'
 Output: let x = 4 in
 x
 
-Format 'sig end'
-Sent (Format"sig end")
+[ocf] Format 'sig end'
 Output: sig end
 
-Format 'sig
+[ocf] Format 'sig
 
  val x : foo -> bar
   (** this does something *)
@@ -66,7 +55,6 @@ Format 'sig
  val f : a -> b -> c ->
 
  d     end'
-Sent (Format"sig\n\n val x : foo -> bar\n  (** this does something *)\n\n val f : a -> b -> c ->\n\n d     end")
 Output:
 sig
   val x : foo -> bar
@@ -75,7 +63,7 @@ sig
   val f : a -> b -> c -> d
 end
 
-Format '
+[ocf] Format '
 let ssmap
     :  (module MapT
           with type key = string
@@ -85,7 +73,6 @@ let ssmap
   =
   ()
 '
-Sent (Format"\nlet ssmap\n    :  (module MapT\n          with type key = string\n           and type data = string\n           and type map = SSMap.map )\n    -> unit\n  =\n  ()\n")
 Output:
 let ssmap :
     (module MapT
@@ -95,9 +82,8 @@ let ssmap :
     unit =
   ()
 
-Sent (Config((profile janestreet)))
-Output: configuration updated
-Format '
+[ocf] Config
+[ocf] Format '
 let ssmap
     :  (module MapT
           with type key = string
@@ -107,7 +93,6 @@ let ssmap
   =
   ()
 '
-Sent (Format"\nlet ssmap\n    :  (module MapT\n          with type key = string\n           and type data = string\n           and type map = SSMap.map )\n    -> unit\n  =\n  ()\n")
 Output:
 let ssmap
     :  (module MapT with type key = string and type data = string and type map = SSMap.map)
@@ -116,4 +101,4 @@ let ssmap
   ()
 ;;
 
-Sent Halt
+[ocf] Halt

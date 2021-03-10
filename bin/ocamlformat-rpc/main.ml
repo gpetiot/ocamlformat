@@ -58,18 +58,19 @@ let rec rpc_main = function
   | Version_defined (v, conf) as state -> (
     match v with
     | V1 -> (
-      match V1.read_input stdin with
+      match V1.Command.read_input stdin with
       | `Halt -> Ok ()
       | `Unknown | `Error _ -> rpc_main state
       | `Format x ->
           List.fold_until ~init:()
             ~finish:(fun () ->
-              V1.output stdout (`Error (Format.flush_str_formatter ())) )
+              V1.Command.output stdout
+                (`Error (Format.flush_str_formatter ())) )
             ~f:(fun () try_formatting ->
               match try_formatting conf x with
               | Ok formatted ->
                   ignore (Format.flush_str_formatter ()) ;
-                  V1.output stdout (`Format formatted) ;
+                  V1.Command.output stdout (`Format formatted) ;
                   Stop ()
               | Error e ->
                   Translation_unit.Error.print ~fmt:Format.str_formatter
@@ -101,7 +102,7 @@ let rec rpc_main = function
           in
           match update conf c with
           | Ok conf ->
-              V1.output stdout (`Config c) ;
+              V1.Command.output stdout (`Config c) ;
               Out_channel.flush stdout ;
               rpc_main (Version_defined (v, conf))
           | Error e ->
@@ -117,7 +118,7 @@ let rec rpc_main = function
                 | `Unknown (x, y) ->
                     Format.sprintf "Unknown configuration value (%s, %s)" x y
               in
-              V1.output stdout (`Error msg) ;
+              V1.Command.output stdout (`Error msg) ;
               Out_channel.flush stdout ;
               rpc_main state ) ) )
 
