@@ -401,7 +401,7 @@ let numeric fragment ~input_name ~source ~range conf opts =
     match
       format fragment ~input_name ~prev_source:source ~parsed conf opts
     with
-    | Error _ -> fallback ()
+    | (exception _) | Error _ -> fallback ()
     | Ok formatted_source -> (
       match parse fragment ~source:formatted_source conf with
       | exception _ -> fallback ()
