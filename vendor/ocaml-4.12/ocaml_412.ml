@@ -2,7 +2,6 @@ module Ast_helper = Ast_helper
 module Ast_mapper = Ast_mapper
 module Asttypes = Asttypes
 module Docstrings = Docstrings
-module Let_binding = Let_binding
 module Lexer = Lexer
 module Location = Location
 module Longident = Longident
