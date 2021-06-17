@@ -255,7 +255,7 @@ let equal fragment ~ignore_doc_comments c a b =
 let normalize fragment c {Parse_with_comments.ast; _} =
   Normalize.normalize fragment c ast
 
-let recover (type a) : a Ast_passes.Ast0.t -> _ -> a = function
+let recover (type a) : a Ast_passes.t -> _ -> a = function
   | Structure -> Parse_wyc.structure
   | Signature -> Parse_wyc.signature
   | Use_file -> Parse_wyc.use_file
@@ -263,15 +263,15 @@ let recover (type a) : a Ast_passes.Ast0.t -> _ -> a = function
   | Module_type -> failwith "no recovery for module_type"
   | Expression -> failwith "no recovery for expression"
 
-let format (type a b) (fg0 : a Ast_passes.Ast0.t)
-    (fgN : b Ast_passes.Ast_final.t) ?output_file ~input_name ~prev_source
+let format (type a b) (fg0 : a Ast_passes.t)
+    (fgN : b Ast_passes.t) ?output_file ~input_name ~prev_source
     ~parsed conf opts =
   let open Result.Monad_infix in
   let dump_ast fg ~suffix ast =
     if opts.Conf.debug then
       Some
         (dump_ast ~input_name ?output_file ~suffix (fun fmt ->
-             Ast_passes.Ast_final.Pprintast.ast fg fmt ast ) )
+             Ast_passes.Pprintast.ast fg fmt ast ) )
     else None
   in
   let dump_formatted ~suffix fmted =
@@ -319,7 +319,7 @@ let format (type a b) (fg0 : a Ast_passes.Ast0.t)
         |> List.filter_map ~f:(fun (s, f_opt) ->
                Option.map f_opt ~f:(fun f -> (s, String.sexp_of_t f)) )
       in
-      ( match parse Ast_passes.Ast0.Parse.ast fg0 conf ~source:fmted with
+      ( match parse Ast_passes.Parse.ast fg0 conf ~source:fmted with
       | exception Sys_error msg -> Error (Error.User_error msg)
       | exception Warning50 l -> internal_error (`Warning50 l) (exn_args ())
       | exception exn -> internal_error (`Cannot_parse exn) (exn_args ())
@@ -401,14 +401,14 @@ let format (type a b) (fg0 : a Ast_passes.Ast0.t)
   | Sys_error msg -> Error (User_error msg)
   | exn -> Error (Ocamlformat_bug {exn; input_name})
 
-let parse_result ?(f = Ast_passes.Ast0.Parse.ast) fragment conf ~source
+let parse_result ?(f = Ast_passes.Parse.ast) fragment conf ~source
     ~input_name =
   match parse f fragment conf ~source with
   | exception exn -> Error (Error.Invalid_source {exn; input_name})
   | parsed -> Ok parsed
 
-let parse_and_format (type a b) (fg0 : a Ast_passes.Ast0.t)
-    (fgN : b Ast_passes.Ast_final.t) ?output_file ~input_name ~source conf
+let parse_and_format (type a b) (fg0 : a Ast_passes.t)
+    (fgN : b Ast_passes.t) ?output_file ~input_name ~source conf
     opts =
   Location.input_name := input_name ;
   parse_result fg0 conf ~source ~input_name
@@ -439,8 +439,8 @@ let check_range nlines (low, high) =
   else
     Error (Error.User_error (Format.sprintf "Invalid range %i-%i" low high))
 
-let numeric (type a b) (fg0 : a list Ast_passes.Ast0.t)
-    (fgN : b list Ast_passes.Ast_final.t) ~input_name ~source ~range conf
+let numeric (type a b) (fg0 : a list Ast_passes.t)
+    (fgN : b list Ast_passes.t) ~input_name ~source ~range conf
     opts =
   let lines = String.split_lines source in
   let nlines = List.length lines in

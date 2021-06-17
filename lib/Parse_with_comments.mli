@@ -27,8 +27,8 @@ end
 exception Warning50 of (Location.t * Warnings.t) list
 
 val parse :
-     ('a Ast_passes.Ast0.t -> Lexing.lexbuf -> 'a)
-  -> 'a Ast_passes.Ast0.t
+     ('a Ast_passes.t -> Lexing.lexbuf -> 'a)
+  -> 'a Ast_passes.t
   -> Conf.t
   -> source:string
   -> 'a with_comments

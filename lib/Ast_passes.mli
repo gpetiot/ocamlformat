@@ -9,48 +9,32 @@
 (*                                                                        *)
 (**************************************************************************)
 
-module Ast0 : sig
-  include module type of Parsetree
+open Parsetree
 
-  type use_file = toplevel_phrase list
+type use_file = toplevel_phrase list
 
-  type 'a t =
-    | Structure : structure t
-    | Signature : signature t
-    | Use_file : use_file t
-    | Core_type : core_type t
-    | Module_type : module_type t
-    | Expression : expression t
+type 'a t =
+  | Structure : structure t
+  | Signature : signature t
+  | Use_file : use_file t
+  | Core_type : core_type t
+  | Module_type : module_type t
+  | Expression : expression t
 
-  module Parse : sig
-    val ast : 'a t -> Lexing.lexbuf -> 'a
-  end
+module Parse : sig
+  val ast : 'a t -> Lexing.lexbuf -> 'a
 end
 
-module Ast_final : sig
-  include module type of Parsetree
+val equal_core_type : core_type -> core_type -> bool
 
-  val equal_core_type : core_type -> core_type -> bool
+val equal : 'a t -> 'a -> 'a -> bool
 
-  type use_file = toplevel_phrase list
+val map : 'a t -> Ast_mapper.mapper -> 'a -> 'a
 
-  type 'a t =
-    | Structure : structure t
-    | Signature : signature t
-    | Use_file : use_file t
-    | Core_type : core_type t
-    | Module_type : module_type t
-    | Expression : expression t
+module Pprintast : sig
+  include module type of Pprintast
 
-  val equal : 'a t -> 'a -> 'a -> bool
-
-  val map : 'a t -> Ast_mapper.mapper -> 'a -> 'a
-
-  module Pprintast : sig
-    include module type of Pprintast
-
-    val ast : 'a t -> Format.formatter -> 'a -> unit
-  end
+  val ast : 'a t -> Format.formatter -> 'a -> unit
 end
 
-val run : 'a Ast0.t -> 'b Ast_final.t -> 'a -> 'b
+val run : 'a t -> 'b t -> 'a -> 'b

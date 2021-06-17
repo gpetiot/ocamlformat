@@ -11,7 +11,7 @@
 
 open Migrate_ast
 open Asttypes
-open Ast_passes.Ast_final
+open Parsetree
 
 val arrow_typ :
      Cmts.t
