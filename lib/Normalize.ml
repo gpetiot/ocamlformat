@@ -13,7 +13,7 @@
 
 open Migrate_ast
 open Asttypes
-open Parsetree
+open Ast_passes.Ast_final
 open Ast_helper
 
 type conf = {conf: Conf.t; normalize_code: structure -> structure}
@@ -40,8 +40,7 @@ let dedup_cmts fragment ast comments =
           atr
       | _ -> Ast_mapper.default_mapper.attribute m atr
     in
-    Ast_passes.map fragment {Ast_mapper.default_mapper with attribute} ast
-    |> ignore ;
+    map fragment {Ast_mapper.default_mapper with attribute} ast |> ignore ;
     !docs
   in
   Set.(to_list (diff (of_list (module Cmt) comments) (of_ast ast)))
@@ -101,7 +100,7 @@ let rec odoc_nestable_block_element c fmt = function
       let txt =
         try
           let ({ast; comments; _} : _ Parse_with_comments.with_comments) =
-            Parse_with_comments.parse Ast_passes.Parse.ast Structure
+            Parse_with_comments.parse Ast_passes.Ast0.Parse.ast Structure
               c.conf ~source:txt
           in
           let ast = Ast_passes.run Structure Structure ast in
@@ -114,7 +113,7 @@ let rec odoc_nestable_block_element c fmt = function
           in
           let ast = c.normalize_code ast in
           Caml.Format.asprintf "AST,%a,COMMENTS,[%a]"
-            Ast_passes.Pprintast.structure ast print_comments
+            Ast_passes.Ast_final.Pprintast.structure ast print_comments
             comments
         with _ -> txt
       in
@@ -255,11 +254,11 @@ let make_mapper conf ~ignore_doc_comments =
   ; typ }
 
 let normalize fragment ~ignore_doc_comments c =
-  Ast_passes.map fragment (make_mapper c ~ignore_doc_comments)
+  map fragment (make_mapper c ~ignore_doc_comments)
 
 let equal fragment ~ignore_doc_comments c ast1 ast2 =
   let map = normalize fragment c ~ignore_doc_comments in
-  Ast_passes.equal fragment (map ast1) (map ast2)
+  equal fragment (map ast1) (map ast2)
 
 let normalize = normalize ~ignore_doc_comments:false
 
@@ -285,9 +284,9 @@ let make_docstring_mapper docstrings =
   in
   {Ast_mapper.default_mapper with attribute; attributes}
 
-let docstrings (type a) (fragment : a Ast_passes.t) s =
+let docstrings (type a) (fragment : a t) s =
   let docstrings = ref [] in
-  let (_ : a) = Ast_passes.map fragment (make_docstring_mapper docstrings) s in
+  let (_ : a) = map fragment (make_docstring_mapper docstrings) s in
   !docstrings
 
 type docstring_error =

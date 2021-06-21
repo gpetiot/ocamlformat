@@ -9,17 +9,19 @@
 (*                                                                        *)
 (**************************************************************************)
 
-open Asttypes
+module Asttypes = struct
+  include Asttypes
 
-let ast_is_private = function Private -> true | Public -> false
+  let is_private = function Private -> true | Public -> false
 
-let ast_is_open = function Open -> true | Closed -> false
+  let is_open = function Open -> true | Closed -> false
 
-let ast_is_override = function Override -> true | Fresh -> false
+  let is_override = function Override -> true | Fresh -> false
 
-let ast_is_mutable = function Mutable -> true | Immutable -> false
+  let is_mutable = function Mutable -> true | Immutable -> false
 
-let ast_is_recursive = function Recursive -> true | Nonrecursive -> false
+  let is_recursive = function Recursive -> true | Nonrecursive -> false
+end
 
 module Position = struct
   open Lexing

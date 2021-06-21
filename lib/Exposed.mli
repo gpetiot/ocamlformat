@@ -15,21 +15,23 @@
     These are used to avoid emitting the sequences [\{<], [\[<], [>\}] and
     [>\]], which are reserved keywords. *)
 
+open Ast_passes.Ast_final
+
 (** Predicates for [<] on the LHS of printed AST nodes. *)
 module Left : sig
-  val core_type : Parsetree.core_type -> bool
+  val core_type : core_type -> bool
 end
 
 module Right : sig
   (** Predicates for [>] on the RHS of printed AST nodes. *)
 
-  val core_type : Parsetree.core_type -> bool
+  val core_type : core_type -> bool
 
-  val label_declaration : Parsetree.label_declaration -> bool
+  val label_declaration : label_declaration -> bool
 
-  val row_field : Parsetree.row_field -> bool
+  val row_field : row_field -> bool
 
-  val payload : Parsetree.payload -> bool
+  val payload : payload -> bool
 
   val list : elt:('a -> bool) -> 'a list -> bool
   (** [list ~elt l] holds iff [elt] holds of the {i last} element in [l], and

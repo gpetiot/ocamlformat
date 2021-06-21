@@ -2197,12 +2197,14 @@ let validate () =
 
 let action () = parse info validate
 
-let update ?(quiet = false) c {Parsetree.attr_name= {txt; loc}; attr_payload; _} =
+open Ast_passes.Ast_final
+
+let update ?(quiet = false) c {attr_name= {txt; loc}; attr_payload; _} =
   let result =
     match txt with
     | "ocamlformat" -> (
       match attr_payload with
-      | Parsetree.PStr
+      | PStr
           [ { pstr_desc=
                 Pstr_eval
                   ( { pexp_desc= Pexp_constant (Pconst_string (str, _, None))

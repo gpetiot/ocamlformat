@@ -24,10 +24,11 @@
     are multiple Ast terms with the same location. *)
 
 module Format = Format_
+open Ast_passes
 
 type t
 
-val init : 'a Ast_passes.t -> debug:bool -> Source.t -> 'a -> Cmt.t list -> t
+val init : 'a Ast_final.t -> debug:bool -> Source.t -> 'a -> Cmt.t list -> t
 (** [init fragment source x comments] associates each comment in [comments]
     with a source location appearing in [x]. It uses [Source] to help resolve
     ambiguities. Initializes the state used by the [fmt] functions. *)
@@ -39,7 +40,7 @@ val relocate :
     [after]. *)
 
 val relocate_wrongfully_attached_cmts :
-  t -> Source.t -> Parsetree.expression -> unit
+  t -> Source.t -> Ast_final.expression -> unit
 (** [relocate_wrongfully_attached_cmts] relocates wrongfully attached
     comments, e.g. comments that should be attached to the whole
     pattern-matching expressions ([match-with] or [try-with] expressions) but

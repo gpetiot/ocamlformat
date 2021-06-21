@@ -12,7 +12,7 @@
 open Migrate_ast
 open Asttypes
 open Ast
-open Parsetree
+open Ast_passes.Ast_final
 
 let rec arrow_typ cmts i ({ast= typ; _} as xtyp) =
   let ctx = Typ typ in
@@ -381,7 +381,7 @@ module Let_binding = struct
             ( ({ppat_desc= Ppat_var _; _} as pat)
             , {ptyp_desc= Ptyp_poly ([], typ1); _} )
         , Pexp_constraint (_, typ2) )
-        when Ast_passes.equal_core_type typ1 typ2 ->
+        when equal_core_type typ1 typ2 ->
           Cmts.relocate cmts ~src:lb_pat.ppat_loc ~before:pat.ppat_loc
             ~after:pat.ppat_loc ;
           sub_pat ~ctx:(Pat lb_pat) pat

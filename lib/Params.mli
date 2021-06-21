@@ -10,7 +10,7 @@
 (**************************************************************************)
 
 module Format = Format_
-open Parsetree
+open Ast_passes.Ast_final
 
 val parens_if : bool -> Conf.t -> ?disambiguate:bool -> Fmt.t -> Fmt.t
 

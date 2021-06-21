@@ -10,7 +10,7 @@
 (**************************************************************************)
 
 open Migrate_ast
-open Parsetree
+open Ast_passes.Ast_final
 
 (** Concrete syntax. *)
 type t = {text: string; tokens: (Parser.token * Location.t) array}

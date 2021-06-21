@@ -9,17 +9,19 @@
 (*                                                                        *)
 (**************************************************************************)
 
-open Asttypes
+module Asttypes : sig
+  include module type of Asttypes
 
-val ast_is_private : private_flag -> bool
+  val is_private : private_flag -> bool
 
-val ast_is_open : closed_flag -> bool
+  val is_open : closed_flag -> bool
 
-val ast_is_override : override_flag -> bool
+  val is_override : override_flag -> bool
 
-val ast_is_mutable : mutable_flag -> bool
+  val is_mutable : mutable_flag -> bool
 
-val ast_is_recursive : rec_flag -> bool
+  val is_recursive : rec_flag -> bool
+end
 
 module Position : sig
   type t = Lexing.position

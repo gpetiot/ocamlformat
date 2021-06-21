@@ -15,7 +15,7 @@ module Format = Format_
 
 open Migrate_ast
 open Asttypes
-open Parsetree
+open Ast_passes.Ast_final
 open Ast
 open Fmt
 
@@ -338,7 +338,7 @@ let fmt_label lbl sep =
   | Labelled l -> str "~" $ str l $ fmt sep
   | Optional l -> str "?" $ str l $ fmt sep
 
-let fmt_private_flag flag = fmt_if (ast_is_private flag) "@ private"
+let fmt_private_flag flag = fmt_if (is_private flag) "@ private"
 
 let fmt_direction_flag = function
   | Upto -> fmt "@ to "
@@ -812,7 +812,7 @@ and fmt_core_type c ?(box = true) ?(in_type_declaration = false) ?pro
         | Open, Some _, _ -> impossible "not produced by parser" )
   | Ptyp_object ([], o_c) ->
       wrap "<@ " ">"
-        ( fmt_if (ast_is_open o_c) "..@ "
+        ( fmt_if (is_open o_c) "..@ "
         $ Cmts.fmt_within c ~pro:noop ~epi:(str " ") ptyp_loc )
   | Ptyp_object (fields, closedness) ->
       let fmt_field {pof_desc; pof_attributes= atrs; pof_loc} =
@@ -839,7 +839,7 @@ and fmt_core_type c ?(box = true) ?(in_type_declaration = false) ?pro
       hvbox 0
         (wrap "< " " >"
            ( list fields "@ ; " fmt_field
-           $ fmt_if (ast_is_open closedness) "@ ; .." ) )
+           $ fmt_if (is_open closedness) "@ ; .." ) )
   | Ptyp_class (lid, []) -> fmt_longident_loc c ~pre:(str "#") lid
   | Ptyp_class (lid, [t1]) ->
       fmt_core_type c (sub_typ ~ctx t1)
@@ -1045,11 +1045,11 @@ and fmt_pattern ?ext c ?pro ?parens ?(box = false)
       let p1, p2 = Params.get_record_pat c.conf ~ctx:ctx0 in
       let fmt_fields =
         fmt_elements_collection
-          ~last_sep:(not (ast_is_open closed_flag))
+          ~last_sep:(not (is_open closed_flag))
           p1 fmt_field flds
       in
       let fmt_underscore =
-        if ast_is_open closed_flag then
+        if is_open closed_flag then
           opt (Source.loc_of_underscore c.source flds ppat_loc) (fun loc ->
               Cmts.fmt c loc p2.wildcard )
         else noop
@@ -2196,7 +2196,7 @@ and fmt_expression c ?(box = true) ?pro ?epi ?eol ?parens ?(indent_wrap = 0)
         ; popen_attributes= attributes
         ; popen_loc }
       , e0 ) ->
-      let override = ast_is_override flag in
+      let override = is_override flag in
       let long_syntax = Source.is_long_pexp_open c.source exp in
       let force =
         let maybe_break =
@@ -2866,7 +2866,7 @@ and fmt_class_field c ctx cf =
   | Pcf_inherit (override, cl, parent) ->
       hovbox 2
         ( str "inherit"
-        $ fmt_if (ast_is_override override) "!"
+        $ fmt_if (is_override override) "!"
         $ fmt "@ "
         $ ( fmt_class_expr c (sub_cl ~ctx cl)
           $ opt parent (fun p -> str " as " $ fmt_str_loc c p) ) )
@@ -2878,7 +2878,7 @@ and fmt_class_field c ctx cf =
                 (box_fun_decl_args c 4
                    ( box_fun_sig_args c 4
                        ( str "method" $ virtual_or_override kind
-                       $ fmt_if (ast_is_private priv) " private"
+                       $ fmt_if (is_private priv) " private"
                        $ str " " $ fmt_str_loc c name $ typ )
                    $ args ) )
             $ eq )
@@ -2891,7 +2891,7 @@ and fmt_class_field c ctx cf =
                 (box_fun_decl_args c 4
                    ( box_fun_sig_args c 4
                        ( str "val" $ virtual_or_override kind
-                       $ fmt_if (ast_is_mutable mut) " mutable"
+                       $ fmt_if (is_mutable mut) " mutable"
                        $ str " " $ fmt_str_loc c name $ typ )
                    $ args ) )
             $ eq )
@@ -2938,7 +2938,7 @@ and fmt_class_type_field c ctx cf =
       box_fun_sig_args c 2
         ( hovbox 4
             ( str "val" $ fmt_virtual_flag virt
-            $ fmt_if (ast_is_mutable mut) "@ mutable"
+            $ fmt_if (is_mutable mut) "@ mutable"
             $ fmt "@ " $ fmt_str_loc c name )
         $ fmt " :@ "
         $ fmt_core_type c (sub_typ ~ctx ty) )
@@ -3249,7 +3249,7 @@ and fmt_label_declaration c ctx ?(last = false) decl =
         ( hvbox 3
             ( hvbox 4
                 ( hvbox 2
-                    ( fmt_if (ast_is_mutable pld_mutable) "mutable "
+                    ( fmt_if (is_mutable pld_mutable) "mutable "
                     $ fmt_str_loc c pld_name $ fmt_if field_loose " "
                     $ fmt ":@ "
                     $ fmt_core_type c (sub_typ ~ctx pld_type)
@@ -3840,7 +3840,7 @@ and fmt_open_description ?ext c ?(keyword = "open") ~kw_attributes
   in
   let keyword =
     fmt_or_k
-      (ast_is_override popen_override)
+      (is_override popen_override)
       ( str keyword $ str "!"
       $ opt ext (fun _ -> str " " $ fmt_extension_suffix c ext) )
       (str keyword $ fmt_extension_suffix c ext)
@@ -4173,7 +4173,7 @@ and fmt_structure_item c ~last:last_item ?ext {ctx; ast= si} =
       @@ fun c ->
       let keyword =
         fmt_or_k
-          (ast_is_override popen_override)
+          (is_override popen_override)
           ( str "open!"
           $ opt ext (fun _ -> str " " $ fmt_extension_suffix c ext) )
           (str "open" $ fmt_extension_suffix c ext)
@@ -4218,7 +4218,7 @@ and fmt_structure_item c ~last:last_item ?ext {ctx; ast= si} =
                     (fits_breaks "" ~hint:(1000, -2) ";;")
             in
             let rec_flag =
-              first && first_grp && ast_is_recursive rec_flag
+              first && first_grp && Asttypes.is_recursive rec_flag
             in
             let ext = if first && first_grp then ext else None in
             fmt_if (not first) "@;<1000 0>"
@@ -4255,7 +4255,7 @@ and fmt_let c ctx ~ext ~rec_flag ~bindings ~parens ~fmt_atrs ~fmt_expr ~loc
   let fmt_binding ~first ~last binding =
     let ext = if first then ext else None in
     let in_ indent = fmt_if_k last (fmt_in indent) in
-    let rec_flag = first && ast_is_recursive rec_flag in
+    let rec_flag = first && Asttypes.is_recursive rec_flag in
     fmt_value_binding c ~rec_flag ?ext ctx ~in_ binding
     $ fmt_if (not last)
         ( match c.conf.let_and with
@@ -4427,7 +4427,7 @@ let fmt_toplevel c ctx itms =
 (** Entry points *)
 
 let fmt_file (type a) ~ctx ~fmt_code ~debug
-    (fragment : a Ast_passes.t) source cmts conf (itms : a) =
+    (fragment : a Ast_passes.Ast_final.t) source cmts conf (itms : a) =
   let c = {source; cmts; conf; debug; fmt_code} in
   match (fragment, itms) with
   | Structure, [] | Signature, [] | Use_file, [] ->
@@ -4445,7 +4445,7 @@ let fmt_file (type a) ~ctx ~fmt_code ~debug
 let fmt_code ~debug =
   let rec fmt_code conf s =
     match
-      Parse_with_comments.parse Ast_passes.Parse.ast Structure conf
+      Parse_with_comments.parse Ast_passes.Ast0.Parse.ast Structure conf
         ~source:s
     with
     | {ast; comments; source; prefix= _} ->
