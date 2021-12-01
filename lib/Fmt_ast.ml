@@ -4417,6 +4417,17 @@ let fmt_toplevel c ctx itms =
   let ast x = Tli x in
   fmt_item_list c ctx update_config ast fmt_item itms
 
+let fmt_repl_phrase c ctx {prepl_phrase; prepl_output} =
+  str "# "
+  $ fmt_toplevel c ctx [prepl_phrase]
+  $ fmt ";;"
+  $ fmt_if_k
+      (not (String.is_empty prepl_output))
+      (break 1000 0 $ str prepl_output)
+
+let fmt_repl_file c ctx itms =
+  vbox 0 @@ list itms "@;<1000 0>" @@ fmt_repl_phrase c ctx
+
 (** Entry points *)
 
 let fmt_file (type a) ~ctx ~fmt_code ~debug (fragment : a Extended_ast.t)
@@ -4434,6 +4445,7 @@ let fmt_file (type a) ~ctx ~fmt_code ~debug (fragment : a Extended_ast.t)
         (fmt_module_type c (sub_mty ~ctx:(Mty mty) mty))
   | Expression, e ->
       fmt_expression c (sub_exp ~ctx:(Str (Ast_helper.Str.eval e)) e)
+  | Repl_file, l -> fmt_repl_file c ctx l
 
 let fmt_code ~debug =
   let rec fmt_code conf s =
@@ -4442,7 +4454,19 @@ let fmt_code ~debug =
         let cmts = Cmts.init Structure ~debug source ast comments in
         let ctx = Pld (PStr ast) in
         Ok (fmt_file ~ctx ~debug Structure source cmts conf ast ~fmt_code)
-    | exception _ -> Error ()
+    | exception _ ->
+        if Docstring.is_repl_block s then
+          match
+            Parse_with_comments.parse Parse.ast Repl_file conf ~source:s
+          with
+          | {ast; comments; source; prefix= _} ->
+              let cmts = Cmts.init Repl_file ~debug source ast comments in
+              let ctx = Top in
+              Ok
+                (fmt_file ~ctx ~debug Repl_file source cmts conf ast
+                   ~fmt_code )
+          | exception _ -> Error ()
+        else Error ()
   in
   fmt_code
 

@@ -38,6 +38,12 @@ let dedup_cmts fragment ast comments =
   in
   Set.(to_list (diff (of_list (module Cmt) comments) (of_ast ast)))
 
+let sort_attributes : attributes -> attributes =
+  List.sort ~compare:Poly.compare
+
+let docstring (c : Conf.t) =
+  Docstring.normalize ~parse_docstrings:c.parse_docstrings
+
 let normalize_code conf (m : Ast_mapper.mapper) txt =
   match Parse_with_comments.parse Parse.ast Structure conf ~source:txt with
   | {ast; comments; _} ->
@@ -50,13 +56,20 @@ let normalize_code conf (m : Ast_mapper.mapper) txt =
       let ast = m.structure m ast in
       Format.asprintf "AST,%a,COMMENTS,[%a]" Pprintast.structure ast
         print_comments comments
+  | exception _ when Docstring.is_repl_block txt -> (
+    match Parse_with_comments.parse Parse.ast Repl_file conf ~source:txt with
+    | {ast; comments; _} ->
+        let comments = dedup_cmts Repl_file ast comments in
+        let print_comments fmt (l : Cmt.t list) =
+          List.sort l ~compare:(fun {Cmt.loc= a; _} {Cmt.loc= b; _} ->
+              Migrate_ast.Location.compare a b )
+          |> List.iter ~f:(fun {Cmt.txt; _} -> Format.fprintf fmt "%s," txt)
+        in
+        let ast = List.map ~f:(m.repl_phrase m) ast in
+        Format.asprintf "AST,%a,COMMENTS,[%a]" (Pprintast.ast Repl_file) ast
+          print_comments comments
+    | exception _ -> txt )
   | exception _ -> txt
-
-let docstring (c : Conf.t) =
-  Docstring.normalize ~parse_docstrings:c.parse_docstrings
-
-let sort_attributes : attributes -> attributes =
-  List.sort ~compare:Poly.compare
 
 let make_mapper conf ~ignore_doc_comments =
   let open Ast_helper in
@@ -104,6 +117,12 @@ let make_mapper conf ~ignore_doc_comments =
     in
     Ast_mapper.default_mapper.attributes m (sort_attributes atrs)
   in
+  let repl_phrase (m : Ast_mapper.mapper) {prepl_phrase; prepl_output} =
+    let p =
+      {prepl_phrase; prepl_output= Docstring.normalize_text prepl_output}
+    in
+    Ast_mapper.default_mapper.repl_phrase m p
+  in
   let expr (m : Ast_mapper.mapper) exp =
     let exp = {exp with pexp_loc_stack= []} in
     let {pexp_desc; pexp_loc= loc1; pexp_attributes= attrs1; _} = exp in
@@ -148,6 +167,7 @@ let make_mapper conf ~ignore_doc_comments =
     location
   ; attribute
   ; attributes
+  ; repl_phrase
   ; expr
   ; pat
   ; typ }
@@ -155,7 +175,9 @@ let make_mapper conf ~ignore_doc_comments =
 let ast fragment ~ignore_doc_comments c =
   map fragment (make_mapper c ~ignore_doc_comments)
 
-let ast = ast ~ignore_doc_comments:false
+let equal fragment ~ignore_doc_comments c ast1 ast2 =
+  let map = ast fragment c ~ignore_doc_comments in
+  equal fragment (map ast1) (map ast2)
 
 let docstring conf =
   let mapper = make_mapper conf ~ignore_doc_comments:false in
@@ -170,6 +192,8 @@ let diff_docstrings c x y =
   Set.symmetric_diff (norm x) (norm y)
 
 let diff_cmts (conf : Conf.t) x y =
+  let mapper = make_mapper conf ~ignore_doc_comments:false in
+  let normalize_code = normalize_code conf mapper in
   let norm z =
     let norm_non_code {Cmt.txt; _} = Docstring.normalize_text txt in
     let f z =
@@ -182,13 +206,7 @@ let diff_cmts (conf : Conf.t) x y =
             in
             let len = String.length str - chars_removed in
             let source = String.sub ~pos:1 ~len str in
-            match
-              Parse_with_comments.parse Parse.ast Structure conf ~source
-            with
-            | exception _ -> norm_non_code z
-            | {ast= s; _} ->
-                Format.asprintf "%a" Pprintast.structure
-                  (ast Structure conf s)
+            normalize_code source
           else norm_non_code z
     in
     Set.of_list (module String) (List.map ~f z)

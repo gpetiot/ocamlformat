@@ -32,3 +32,12 @@ val normalize :
   -> string
 
 val normalize_text : string -> string
+
+val is_repl_block : string -> bool
+(** [is_repl_block x] returns whether [x] is a list of REPL phrases and
+    outputs of the form:
+
+    {v
+      # let this is = some phrase;;
+      this is some output
+    v} *)

@@ -16,6 +16,8 @@
 
 #### New features
 
+  + Parse and format REPL phrases in doc-comments blocks (#1941, @gpetiot)
+
 ### 0.20.1 (2021-12-13)
 
 #### New features
