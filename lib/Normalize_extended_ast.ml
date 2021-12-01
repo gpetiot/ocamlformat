@@ -37,3 +37,156 @@ let dedup_cmts fragment ast comments =
     !docs
   in
   Set.(to_list (diff (of_list (module Cmt) comments) (of_ast ast)))
+
+let sort_attributes : attributes -> attributes =
+  List.sort ~compare:Poly.compare
+
+let docstring (c : Conf.t) =
+  Docstring.normalize ~parse_docstrings:c.parse_docstrings
+
+let normalize_code conf (m : Ast_mapper.mapper) txt =
+  match Parse_with_comments.parse Parse.ast Structure conf ~source:txt with
+  | {ast; comments; _} ->
+      let comments = dedup_cmts Structure ast comments in
+      let print_comments fmt (l : Cmt.t list) =
+        List.sort l ~compare:(fun {Cmt.loc= a; _} {Cmt.loc= b; _} ->
+            Migrate_ast.Location.compare a b )
+        |> List.iter ~f:(fun {Cmt.txt; _} -> Format.fprintf fmt "%s," txt)
+      in
+      let ast = m.structure m ast in
+      Format.asprintf "AST,%a,COMMENTS,[%a]" Pprintast.structure ast
+        print_comments comments
+  | exception _ when Docstring.is_repl_block txt -> (
+    match Parse_with_comments.parse Parse.ast Repl_file conf ~source:txt with
+    | {ast; comments; _} ->
+        let comments = dedup_cmts Repl_file ast comments in
+        let print_comments fmt (l : Cmt.t list) =
+          List.sort l ~compare:(fun {Cmt.loc= a; _} {Cmt.loc= b; _} ->
+              Migrate_ast.Location.compare a b )
+          |> List.iter ~f:(fun {Cmt.txt; _} -> Format.fprintf fmt "%s," txt)
+        in
+        let ast = List.map ~f:(m.repl_phrase m) ast in
+        Format.asprintf "AST,%a,COMMENTS,[%a]" (Pprintast.ast Repl_file) ast
+          print_comments comments
+    | exception _ -> txt )
+  | exception _ -> txt
+
+let make_mapper conf ~ignore_doc_comments =
+  let open Ast_helper in
+  (* remove locations *)
+  let location _ _ = Location.none in
+  let attribute (m : Ast_mapper.mapper) (attr : attribute) =
+    match attr.attr_payload with
+    | PStr
+        [ ( { pstr_desc=
+                Pstr_eval
+                  ( ( { pexp_desc=
+                          Pexp_constant
+                            ( { pconst_desc=
+                                  Pconst_string (doc, str_loc, None)
+                              ; _ } as const )
+                      ; _ } as exp )
+                  , [] )
+            ; _ } as pstr ) ]
+      when Ast.Attr.is_doc attr ->
+        let normalize_code = normalize_code conf m in
+        let doc' = docstring conf ~normalize_code doc in
+        Ast_mapper.default_mapper.attribute m
+          { attr with
+            attr_payload=
+              PStr
+                [ { pstr with
+                    pstr_desc=
+                      Pstr_eval
+                        ( { exp with
+                            pexp_desc=
+                              Pexp_constant
+                                { const with
+                                  pconst_desc=
+                                    Pconst_string (doc', str_loc, None) }
+                          ; pexp_loc_stack= [] }
+                        , [] ) } ] }
+    | _ -> Ast_mapper.default_mapper.attribute m attr
+  in
+  (* sort attributes *)
+  let attributes (m : Ast_mapper.mapper) (atrs : attribute list) =
+    let atrs =
+      if ignore_doc_comments then
+        List.filter atrs ~f:(fun a -> not (Ast.Attr.is_doc a))
+      else atrs
+    in
+    Ast_mapper.default_mapper.attributes m (sort_attributes atrs)
+  in
+  let repl_phrase (m : Ast_mapper.mapper) {prepl_phrase; prepl_output} =
+    let p =
+      {prepl_phrase; prepl_output= Docstring.normalize_text prepl_output}
+    in
+    Ast_mapper.default_mapper.repl_phrase m p
+  in
+  let expr (m : Ast_mapper.mapper) exp =
+    let exp = {exp with pexp_loc_stack= []} in
+    let {pexp_desc; pexp_loc= loc1; pexp_attributes= attrs1; _} = exp in
+    match pexp_desc with
+    | Pexp_poly ({pexp_desc= Pexp_constraint (e, t); _}, None) ->
+        m.expr m {exp with pexp_desc= Pexp_poly (e, Some t)}
+    | Pexp_constraint (e, {ptyp_desc= Ptyp_poly ([], _t); _}) -> m.expr m e
+    | Pexp_sequence
+        ( exp1
+        , { pexp_desc= Pexp_sequence (exp2, exp3)
+          ; pexp_loc= loc2
+          ; pexp_attributes= attrs2
+          ; _ } ) ->
+        m.expr m
+          (Exp.sequence ~loc:loc1 ~attrs:attrs1
+             (Exp.sequence ~loc:loc2 ~attrs:attrs2 exp1 exp2)
+             exp3 )
+    | _ -> Ast_mapper.default_mapper.expr m exp
+  in
+  let pat (m : Ast_mapper.mapper) pat =
+    let pat = {pat with ppat_loc_stack= []} in
+    let {ppat_desc; ppat_loc= loc1; ppat_attributes= attrs1; _} = pat in
+    (* normalize nested or patterns *)
+    match ppat_desc with
+    | Ppat_or
+        ( pat1
+        , { ppat_desc= Ppat_or (pat2, pat3)
+          ; ppat_loc= loc2
+          ; ppat_attributes= attrs2
+          ; _ } ) ->
+        m.pat m
+          (Pat.or_ ~loc:loc1 ~attrs:attrs1
+             (Pat.or_ ~loc:loc2 ~attrs:attrs2 pat1 pat2)
+             pat3 )
+    | _ -> Ast_mapper.default_mapper.pat m pat
+  in
+  let typ (m : Ast_mapper.mapper) typ =
+    let typ = {typ with ptyp_loc_stack= []} in
+    Ast_mapper.default_mapper.typ m typ
+  in
+  { Ast_mapper.default_mapper with
+    location
+  ; attribute
+  ; attributes
+  ; repl_phrase
+  ; expr
+  ; pat
+  ; typ }
+
+let ast fragment ~ignore_doc_comments c =
+  map fragment (make_mapper c ~ignore_doc_comments)
+
+let equal fragment ~ignore_doc_comments c ast1 ast2 =
+  let map = ast fragment c ~ignore_doc_comments in
+  equal fragment (map ast1) (map ast2)
+
+let docstring conf =
+  let mapper = make_mapper conf ~ignore_doc_comments:false in
+  let normalize_code = normalize_code conf mapper in
+  docstring conf ~normalize_code
+
+let diff_docstrings c x y =
+  let norm z =
+    let f Cmt.{txt; _} = docstring c txt in
+    Set.of_list (module String) (List.map ~f z)
+  in
+  Set.symmetric_diff (norm x) (norm y)

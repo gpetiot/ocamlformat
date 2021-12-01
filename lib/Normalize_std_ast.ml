@@ -210,13 +210,6 @@ let moved_docstrings fragment c s1 s2 =
         ~f:(fun ((loc, x), (_, y)) -> Docstring.Unstable (loc, x, y))
         l
 
-let diff_docstrings c x y =
-  let norm z =
-    let f Cmt.{txt; _} = docstring c txt in
-    Set.of_list (module String) (List.map ~f z)
-  in
-  Set.symmetric_diff (norm x) (norm y)
-
 let diff_cmts (conf : Conf.t) x y =
   let norm z =
     let norm_non_code {Cmt.txt; _} = Docstring.normalize_text txt in
