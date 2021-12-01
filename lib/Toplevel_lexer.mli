@@ -9,4 +9,5 @@
 (*                                                                        *)
 (**************************************************************************)
 
-val fmt : fmt_code:Docstring.code_formatter -> Odoc_parser.Ast.t -> Fmt.t
+val repl_file :
+  Lexing.lexbuf -> Ocaml_413_extended.Parsetree.repl_phrase list

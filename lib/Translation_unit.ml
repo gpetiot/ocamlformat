@@ -250,6 +250,7 @@ let recover (type a) : a Extended_ast.t -> _ -> a = function
   | Core_type -> failwith "no recovery for core_type"
   | Module_type -> failwith "no recovery for module_type"
   | Expression -> failwith "no recovery for expression"
+  | Repl_file -> failwith "no recovery for repl_file"
 
 let strconst_mapper locs =
   let constant self c =
@@ -341,9 +342,12 @@ let format (type a b) (fg : a Extended_ast.t) (std_fg : b Std_ast.t)
       >>= fun std_t_new ->
       (* Ast not preserved ? *)
       ( if
-        not
-          (Normalize_std_ast.equal std_fg conf std_t.ast std_t_new.ast
-             ~ignore_doc_comments:(not conf.comment_check) )
+        (not
+           (Normalize_std_ast.equal std_fg conf std_t.ast std_t_new.ast
+              ~ignore_doc_comments:(not conf.comment_check) ) )
+        && not
+             (Normalize_extended_ast.equal fg conf t.ast t_new.ast
+                ~ignore_doc_comments:(not conf.comment_check) )
       then
         let old_ast =
           dump_ast std_fg ~suffix:".old"
@@ -486,6 +490,7 @@ let parse_and_format = function
   | Syntax.Core_type -> parse_and_format Core_type Core_type
   | Syntax.Module_type -> parse_and_format Module_type Module_type
   | Syntax.Expression -> parse_and_format Expression Expression
+  | Syntax.Repl_file -> parse_and_format Repl_file Repl_file
 
 let check_line nlines i =
   (* the last line of the buffer (nlines + 1) should not raise an error *)
@@ -547,3 +552,4 @@ let numeric = function
   | Syntax.Core_type -> failwith "numeric not implemented for Core_type"
   | Syntax.Module_type -> failwith "numeric not implemented for Module_type"
   | Syntax.Expression -> failwith "numeric not implemented for Expression"
+  | Syntax.Repl_file -> failwith "numeric not implemented for Repl_file"

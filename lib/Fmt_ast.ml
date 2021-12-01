@@ -24,7 +24,7 @@ type c =
   ; debug: bool
   ; source: Source.t
   ; cmts: Cmts.t
-  ; fmt_code: Conf.t -> string -> (Fmt.t, unit) Result.t }
+  ; fmt_code: Conf.t -> Docstring.code_formatter }
 
 module Cmts = struct
   include Cmts
@@ -4467,6 +4467,17 @@ let fmt_toplevel c ctx itms =
   let ast x = Tli x in
   fmt_item_list c ctx update_config ast fmt_item itms
 
+let fmt_repl_phrase c ctx {prepl_phrase; prepl_output} =
+  str "# "
+  $ fmt_toplevel c ctx [prepl_phrase]
+  $ fmt ";;"
+  $ fmt_if_k
+      (not (String.is_empty prepl_output))
+      (break 1000 0 $ str prepl_output)
+
+let fmt_repl_file c ctx itms =
+  vbox 0 @@ list itms "@;<1000 0>" @@ fmt_repl_phrase c ctx
+
 (** Entry points *)
 
 let fmt_file (type a) ~ctx ~fmt_code ~debug (fragment : a Extended_ast.t)
@@ -4484,15 +4495,30 @@ let fmt_file (type a) ~ctx ~fmt_code ~debug (fragment : a Extended_ast.t)
         (fmt_module_type c (sub_mty ~ctx:(Mty mty) mty))
   | Expression, e ->
       fmt_expression c (sub_exp ~ctx:(Str (Ast_helper.Str.eval e)) e)
+  | Repl_file, l -> fmt_repl_file c ctx l
+
+let fmt_parse_result conf ~debug ast_kind ast source comments ~fmt_code =
+  let cmts = Cmts.init ast_kind ~debug source ast comments in
+  let ctx = Top in
+  Ok (fmt_file ~ctx ~debug ast_kind source cmts conf ast ~fmt_code)
 
 let fmt_code ~debug =
-  let rec fmt_code conf s =
-    match Parse_with_comments.parse Parse.ast Structure conf ~source:s with
-    | {ast; comments; source; prefix= _} ->
-        let cmts = Cmts.init Structure ~debug source ast comments in
-        let ctx = Pld (PStr ast) in
-        Ok (fmt_file ~ctx ~debug Structure source cmts conf ast ~fmt_code)
-    | exception _ -> Error ()
+  let rec fmt_code (conf : Conf.t) s =
+    let warn = conf.parse_toplevel_phrases in
+    match Parse_with_comments.parse_toplevel conf ~source:s with
+    | Either.First {ast; comments; source; prefix= _} ->
+        fmt_parse_result conf ~debug Use_file ast source comments ~fmt_code
+    | Second {ast; comments; source; prefix= _} ->
+        fmt_parse_result conf ~debug Repl_file ast source comments ~fmt_code
+    | exception Syntaxerr.Error (Expecting (_, x)) when warn ->
+        Error (`Msg (Caml.Format.asprintf "expecting: %s" x))
+    | exception Syntaxerr.Error (Not_expecting (_, x)) when warn ->
+        Error (`Msg (Caml.Format.asprintf "not expecting: %s" x))
+    | exception Syntaxerr.Error (Other _) when warn ->
+        Error (`Msg (Caml.Format.asprintf "invalid toplevel or OCaml syntax"))
+    | exception e when warn ->
+        Error (`Msg (Caml.Format.asprintf "%a" Exn.pp e))
+    | exception _ -> Error (`Msg "")
   in
   fmt_code
 
