@@ -4363,7 +4363,7 @@
  (action
   (with-stdout-to repl.mli.stdout
    (with-stderr-to repl.mli.stderr
-     (run %{bin:ocamlformat} --margin-check %{dep:tests/repl.mli})))))
+     (run %{bin:ocamlformat} --margin-check --parse-toplevel-phrases %{dep:tests/repl.mli})))))
 
 (rule
  (alias runtest)
