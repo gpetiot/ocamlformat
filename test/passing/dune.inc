@@ -4361,6 +4361,24 @@
  (deps tests/.ocamlformat )
  (package ocamlformat)
  (action
+  (with-stdout-to repl.ml.stdout
+   (with-stderr-to repl.ml.stderr
+     (run %{bin:ocamlformat} --margin-check --parse-toplevel-phrases --repl-file %{dep:tests/repl.ml})))))
+
+(rule
+ (alias runtest)
+ (package ocamlformat)
+ (action (diff tests/repl.ml.ref repl.ml.stdout)))
+
+(rule
+ (alias runtest)
+ (package ocamlformat)
+ (action (diff tests/repl.ml.err repl.ml.stderr)))
+
+(rule
+ (deps tests/.ocamlformat )
+ (package ocamlformat)
+ (action
   (with-stdout-to repl.mli.stdout
    (with-stderr-to repl.mli.stderr
      (run %{bin:ocamlformat} --margin-check --parse-toplevel-phrases %{dep:tests/repl.mli})))))
