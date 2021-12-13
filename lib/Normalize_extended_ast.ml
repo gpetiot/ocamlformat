@@ -56,7 +56,8 @@ let normalize_code conf (m : Ast_mapper.mapper) txt =
       let ast = m.structure m ast in
       Format.asprintf "AST,%a,COMMENTS,[%a]" Pprintast.structure ast
         print_comments comments
-  | exception _ when Docstring.is_repl_block txt -> (
+  | exception _
+    when Docstring.is_repl_block txt && conf.parse_toplevel_phrases -> (
     match Parse_with_comments.parse Parse.ast Repl_file conf ~source:txt with
     | {ast; comments; _} ->
         let comments = dedup_cmts Repl_file ast comments in

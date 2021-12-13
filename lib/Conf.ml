@@ -65,6 +65,7 @@ type t =
   ; parens_tuple: [`Always | `Multi_line_only]
   ; parens_tuple_patterns: [`Always | `Multi_line_only]
   ; parse_docstrings: bool
+  ; parse_toplevel_phrases: bool
   ; quiet: bool
   ; sequence_blank_line: [`Compact | `Preserve_one]
   ; sequence_style: [`Before | `Separator | `Terminator]
@@ -971,6 +972,13 @@ module Formatting = struct
       (fun conf x -> {conf with parse_docstrings= x})
       (fun conf -> conf.parse_docstrings)
 
+  let parse_toplevel_phrases =
+    let doc = "Parse and format toplevel phrases." in
+    let names = ["parse-toplevel-phrases"] in
+    C.flag ~default:false ~names ~doc ~kind
+      (fun conf x -> {conf with parse_toplevel_phrases= x})
+      (fun conf -> conf.parse_toplevel_phrases)
+
   let sequence_blank_line =
     let doc = "Blank line between expressions of a sequence." in
     let names = ["sequence-blank-line"] in
@@ -1431,6 +1439,7 @@ let ocamlformat_profile =
   ; parens_tuple= `Always
   ; parens_tuple_patterns= `Multi_line_only
   ; parse_docstrings= false
+  ; parse_toplevel_phrases= false
   ; quiet= false
   ; sequence_blank_line= `Compact
   ; sequence_style= `Separator
@@ -1504,6 +1513,7 @@ let conventional_profile =
   ; parens_tuple= C.default Formatting.parens_tuple
   ; parens_tuple_patterns= C.default Formatting.parens_tuple_patterns
   ; parse_docstrings= C.default Formatting.parse_docstrings
+  ; parse_toplevel_phrases= C.default Formatting.parse_toplevel_phrases
   ; quiet= C.default quiet
   ; sequence_blank_line= C.default Formatting.sequence_blank_line
   ; sequence_style= C.default Formatting.sequence_style
@@ -1630,6 +1640,7 @@ let janestreet_profile =
   ; parens_tuple= `Multi_line_only
   ; parens_tuple_patterns= `Multi_line_only
   ; parse_docstrings= false
+  ; parse_toplevel_phrases= false
   ; quiet= ocamlformat_profile.quiet
   ; sequence_blank_line= `Compact
   ; sequence_style= `Terminator
