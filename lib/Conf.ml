@@ -1251,8 +1251,12 @@ let kind : Syntax.t option ref =
   let intf = (Some Syntax.Signature, Arg.info ["intf"] ~doc ~docs) in
   let doc = "Deprecated. Same as $(b,impl)." in
   let use_file = (Some Syntax.Use_file, Arg.info ["use-file"] ~doc ~docs) in
+  let doc = "Parse file with unrecognized extension as toplevel phrases." in
+  let repl_file =
+    (Some Syntax.Repl_file, Arg.info ["repl-file"] ~doc ~docs)
+  in
   let default = None in
-  mk ~default Arg.(value & vflag default [impl; intf; use_file])
+  mk ~default Arg.(value & vflag default [impl; intf; use_file; repl_file])
 
 let margin_check =
   let doc = "Emit a warning if the formatted output exceeds the margin." in

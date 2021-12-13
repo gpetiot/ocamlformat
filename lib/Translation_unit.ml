@@ -490,6 +490,7 @@ let parse_and_format = function
   | Syntax.Core_type -> parse_and_format Core_type Core_type
   | Syntax.Module_type -> parse_and_format Module_type Module_type
   | Syntax.Expression -> parse_and_format Expression Expression
+  | Syntax.Repl_file -> parse_and_format Repl_file Repl_file
 
 let check_line nlines i =
   (* the last line of the buffer (nlines + 1) should not raise an error *)
@@ -551,3 +552,4 @@ let numeric = function
   | Syntax.Core_type -> failwith "numeric not implemented for Core_type"
   | Syntax.Module_type -> failwith "numeric not implemented for Module_type"
   | Syntax.Expression -> failwith "numeric not implemented for Expression"
+  | Syntax.Repl_file -> failwith "numeric not implemented for Repl_file"
