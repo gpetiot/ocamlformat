@@ -44,31 +44,28 @@ let sort_attributes : attributes -> attributes =
 let docstring (c : Conf.t) =
   Docstring.normalize ~parse_docstrings:c.parse_docstrings
 
+let normalize_comments dedup fmt comments =
+  let comments = dedup comments in
+  List.sort comments ~compare:(fun {Cmt.loc= a; _} {Cmt.loc= b; _} ->
+      Migrate_ast.Location.compare a b )
+  |> List.iter ~f:(fun {Cmt.txt; _} -> Format.fprintf fmt "%s," txt)
+
+let normalize_parse_result ast_kind ast comments =
+  Format.asprintf "AST,%a,COMMENTS,[%a]" (Pprintast.ast ast_kind) ast
+    (normalize_comments (dedup_cmts ast_kind ast))
+    comments
+
 let normalize_code conf (m : Ast_mapper.mapper) txt =
   match Parse_with_comments.parse Parse.ast Use_file conf ~source:txt with
   | {ast; comments; _} ->
-      let comments = dedup_cmts Use_file ast comments in
-      let print_comments fmt (l : Cmt.t list) =
-        List.sort l ~compare:(fun {Cmt.loc= a; _} {Cmt.loc= b; _} ->
-            Migrate_ast.Location.compare a b )
-        |> List.iter ~f:(fun {Cmt.txt; _} -> Format.fprintf fmt "%s," txt)
-      in
       let ast = List.map ~f:(m.toplevel_phrase m) ast in
-      Format.asprintf "AST,%a,COMMENTS,[%a]" (Pprintast.ast Use_file) ast
-        print_comments comments
+      normalize_parse_result Use_file ast comments
   | exception _
     when Docstring.is_repl_block txt && conf.parse_toplevel_phrases -> (
     match Parse_with_comments.parse Parse.ast Repl_file conf ~source:txt with
     | {ast; comments; _} ->
-        let comments = dedup_cmts Repl_file ast comments in
-        let print_comments fmt (l : Cmt.t list) =
-          List.sort l ~compare:(fun {Cmt.loc= a; _} {Cmt.loc= b; _} ->
-              Migrate_ast.Location.compare a b )
-          |> List.iter ~f:(fun {Cmt.txt; _} -> Format.fprintf fmt "%s," txt)
-        in
         let ast = List.map ~f:(m.repl_phrase m) ast in
-        Format.asprintf "AST,%a,COMMENTS,[%a]" (Pprintast.ast Repl_file) ast
-          print_comments comments
+        normalize_parse_result Repl_file ast comments
     | exception _ -> txt )
   | exception _ -> txt
 
