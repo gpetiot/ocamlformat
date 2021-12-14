@@ -4445,11 +4445,11 @@ let fmt_file (type a) ~ctx ~fmt_code ~debug (fragment : a Extended_ast.t)
 
 let fmt_code ~debug =
   let rec fmt_code conf s =
-    match Parse_with_comments.parse Parse.ast Structure conf ~source:s with
+    match Parse_with_comments.parse Parse.ast Use_file conf ~source:s with
     | {ast; comments; source; prefix= _} ->
-        let cmts = Cmts.init Structure ~debug source ast comments in
-        let ctx = Pld (PStr ast) in
-        Ok (fmt_file ~ctx ~debug Structure source cmts conf ast ~fmt_code)
+        let cmts = Cmts.init Use_file ~debug source ast comments in
+        let ctx = Top in
+        Ok (fmt_file ~ctx ~debug Use_file source cmts conf ast ~fmt_code)
     | exception _ ->
         if Docstring.is_repl_block s then
           match
