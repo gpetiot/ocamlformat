@@ -153,5 +153,3 @@ let normalize ~parse_docstrings ~normalize_code text =
     let parsed = Odoc_parser.parse_comment ~location ~text in
     let c = {normalize_code} in
     Format.asprintf "Docstring(%a)%!" (odoc_docs c) (Odoc_parser.ast parsed)
-
-let is_repl_block x = String.is_prefix (String.strip x) ~prefix:"# "

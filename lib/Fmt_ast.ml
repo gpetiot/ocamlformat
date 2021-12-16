@@ -4447,26 +4447,19 @@ let fmt_file (type a) ~ctx ~fmt_code ~debug (fragment : a Extended_ast.t)
       fmt_expression c (sub_exp ~ctx:(Str (Ast_helper.Str.eval e)) e)
   | Repl_file, l -> fmt_repl_file c ctx l
 
+let fmt_parse_result conf ~debug ast_kind ast source comments ~fmt_code =
+  let cmts = Cmts.init ast_kind ~debug source ast comments in
+  let ctx = Top in
+  Ok (fmt_file ~ctx ~debug ast_kind source cmts conf ast ~fmt_code)
+
 let fmt_code ~debug =
   let rec fmt_code conf s =
-    match Parse_with_comments.parse Parse.ast Structure conf ~source:s with
-    | {ast; comments; source; prefix= _} ->
-        let cmts = Cmts.init Structure ~debug source ast comments in
-        let ctx = Pld (PStr ast) in
-        Ok (fmt_file ~ctx ~debug Structure source cmts conf ast ~fmt_code)
-    | exception _ ->
-        if Docstring.is_repl_block s then
-          match
-            Parse_with_comments.parse Parse.ast Repl_file conf ~source:s
-          with
-          | {ast; comments; source; prefix= _} ->
-              let cmts = Cmts.init Repl_file ~debug source ast comments in
-              let ctx = Top in
-              Ok
-                (fmt_file ~ctx ~debug Repl_file source cmts conf ast
-                   ~fmt_code )
-          | exception _ -> Error ()
-        else Error ()
+    match Parse_with_comments.parse_toplevel conf ~source:s with
+    | Either.First {ast; comments; source; prefix= _} ->
+        fmt_parse_result conf ~debug Use_file ast source comments ~fmt_code
+    | Second {ast; comments; source; prefix= _} ->
+        fmt_parse_result conf ~debug Repl_file ast source comments ~fmt_code
+    | exception _ -> Error ()
   in
   fmt_code
 
