@@ -56,17 +56,15 @@ let normalize_parse_result ast_kind ast comments =
     comments
 
 let normalize_code conf (m : Ast_mapper.mapper) txt =
-  match Parse_with_comments.parse Parse.ast Use_file conf ~source:txt with
-  | {ast; comments; _} ->
-      let ast = List.map ~f:(m.toplevel_phrase m) ast in
-      normalize_parse_result Use_file ast comments
-  | exception _
-    when Docstring.is_repl_block txt && conf.parse_toplevel_phrases -> (
-    match Parse_with_comments.parse Parse.ast Repl_file conf ~source:txt with
-    | {ast; comments; _} ->
-        let ast = List.map ~f:(m.repl_phrase m) ast in
-        normalize_parse_result Repl_file ast comments
-    | exception _ -> txt )
+  match Parse_with_comments.parse_toplevel conf ~source:txt with
+  | First {ast; comments; _} ->
+      normalize_parse_result Use_file
+        (List.map ~f:(m.toplevel_phrase m) ast)
+        comments
+  | Second {ast; comments; _} ->
+      normalize_parse_result Repl_file
+        (List.map ~f:(m.repl_phrase m) ast)
+        comments
   | exception _ -> txt
 
 let make_mapper conf ~ignore_doc_comments =
