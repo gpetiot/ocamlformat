@@ -973,7 +973,7 @@ module Formatting = struct
       (fun conf -> conf.parse_docstrings)
 
   let parse_toplevel_phrases =
-    let doc = "Parse and format toplevel phrases." in
+    let doc = "Parse and format toplevel phrases and their output." in
     let names = ["parse-toplevel-phrases"] in
     C.flag ~default:false ~names ~doc ~kind
       (fun conf x -> {conf with parse_toplevel_phrases= x})
@@ -1251,7 +1251,10 @@ let kind : Syntax.t option ref =
   let intf = (Some Syntax.Signature, Arg.info ["intf"] ~doc ~docs) in
   let doc = "Deprecated. Same as $(b,impl)." in
   let use_file = (Some Syntax.Use_file, Arg.info ["use-file"] ~doc ~docs) in
-  let doc = "Parse file with unrecognized extension as toplevel phrases." in
+  let doc =
+    "Parse file with unrecognized extension as toplevel phrases with their \
+     output."
+  in
   let repl_file =
     (Some Syntax.Repl_file, Arg.info ["repl-file"] ~doc ~docs)
   in
