@@ -16,7 +16,10 @@
 
 #### New features
 
-  + Parse and format REPL phrases in doc-comments blocks (#1941, @gpetiot)
+  + Parse and format toplevel phrases and their output (#1941, @gpetiot).
+    This feature is enabled with the flag `--parse-toplevel-phrases`.
+    Toplevel phrases are supported when they are located in doc-comments blocks and cinaps comments.
+    Whole input files can also be parsed and formatted as toplevel phrases with the flag `--repl-file`.
 
 ### 0.20.1 (2021-12-13)
 
