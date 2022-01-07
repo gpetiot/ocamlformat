@@ -38,12 +38,6 @@ let dedup_cmts fragment ast comments =
   in
   Set.(to_list (diff (of_list (module Cmt) comments) (of_ast ast)))
 
-let sort_attributes : attributes -> attributes =
-  List.sort ~compare:Poly.compare
-
-let docstring (c : Conf.t) =
-  Docstring.normalize ~parse_docstrings:c.parse_docstrings
-
 let normalize_comments dedup fmt comments =
   let comments = dedup comments in
   List.sort comments ~compare:(fun {Cmt.loc= a; _} {Cmt.loc= b; _} ->
@@ -66,6 +60,12 @@ let normalize_code conf (m : Ast_mapper.mapper) txt =
         (List.map ~f:(m.repl_phrase m) ast)
         comments
   | exception _ -> txt
+
+let docstring (c : Conf.t) =
+  Docstring.normalize ~parse_docstrings:c.parse_docstrings
+
+let sort_attributes : attributes -> attributes =
+  List.sort ~compare:Poly.compare
 
 let make_mapper conf ~ignore_doc_comments =
   let open Ast_helper in
@@ -171,10 +171,6 @@ let make_mapper conf ~ignore_doc_comments =
 let ast fragment ~ignore_doc_comments c =
   map fragment (make_mapper c ~ignore_doc_comments)
 
-let equal fragment ~ignore_doc_comments c ast1 ast2 =
-  let map = ast fragment c ~ignore_doc_comments in
-  equal fragment (map ast1) (map ast2)
-
 let docstring conf =
   let mapper = make_mapper conf ~ignore_doc_comments:false in
   let normalize_code = normalize_code conf mapper in
@@ -208,3 +204,7 @@ let diff_cmts (conf : Conf.t) x y =
     Set.of_list (module String) (List.map ~f z)
   in
   Set.symmetric_diff (norm x) (norm y)
+
+let equal fragment ~ignore_doc_comments c ast1 ast2 =
+  let map = ast fragment c ~ignore_doc_comments in
+  equal fragment (map ast1) (map ast2)
