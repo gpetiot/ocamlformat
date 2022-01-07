@@ -118,14 +118,16 @@ module Parse = struct
           | _ -> p )
     in
     List.map phrases ~f:(fun p ->
-        let p, prepl_output =
-          match Astring.String.cut ~sep:";;\n" p with
-          | Some (p, o) -> (p ^ ";;", o)
-          | None -> (p, "")
-        in
-        let lexbuf = Lexing.from_string p in
-        let prepl_phrase = Parse.toplevel_phrase lexbuf in
-        {prepl_phrase; prepl_output} )
+        match Astring.String.cut ~sep:";;" p with
+        | Some (p, o) ->
+            let p = p ^ ";;" in
+            let o = String.lstrip o in
+            let lexbuf = Lexing.from_string p in
+            let prepl_phrase = Parse.toplevel_phrase lexbuf in
+            {prepl_phrase; prepl_output= o}
+        | None ->
+            let loc = Location.curr lx in
+            raise (Syntaxerr.Error (Expecting (loc, ";;"))) )
 
   let ast (type a) (fg : a t) lexbuf : a =
     normalize fg
