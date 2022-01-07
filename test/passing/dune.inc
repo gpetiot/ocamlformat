@@ -820,7 +820,7 @@
 (rule
  (alias runtest)
  (package ocamlformat)
- (action (diff tests/cinaps.ml cinaps.ml.stdout)))
+ (action (diff tests/cinaps.ml.ref cinaps.ml.stdout)))
 
 (rule
  (alias runtest)
