@@ -107,28 +107,6 @@ module Parse = struct
 
   let normalize fg x = map fg fix_letop_locs @@ map fg normalize_lists @@ x
 
-  let repl_file (lx : Lexing.lexbuf) =
-    let str = String.strip (Bytes.to_string lx.lex_buffer) in
-    let phrases = Astring.String.cuts ~sep:"\n# " str in
-    let phrases =
-      List.mapi phrases ~f:(fun i p ->
-          let p = String.strip p in
-          match i with
-          | 0 -> Option.value (String.chop_prefix p ~prefix:"# ") ~default:p
-          | _ -> p )
-    in
-    List.map phrases ~f:(fun p ->
-        match Astring.String.cut ~sep:";;" p with
-        | Some (p, o) ->
-            let p = p ^ ";;" in
-            let o = String.lstrip o in
-            let lexbuf = Lexing.from_string p in
-            let prepl_phrase = Parse.toplevel_phrase lexbuf in
-            {prepl_phrase; prepl_output= o}
-        | None ->
-            let loc = Location.curr lx in
-            raise (Syntaxerr.Error (Expecting (loc, ";;"))) )
-
   let ast (type a) (fg : a t) lexbuf : a =
     normalize fg
     @@
@@ -139,7 +117,7 @@ module Parse = struct
     | Core_type -> Parse.core_type lexbuf
     | Module_type -> Parse.module_type lexbuf
     | Expression -> Parse.expression lexbuf
-    | Repl_file -> repl_file lexbuf
+    | Repl_file -> Toplevel_lexer.repl_file lexbuf
 end
 
 module Pprintast = struct
