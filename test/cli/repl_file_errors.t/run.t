@@ -23,3 +23,9 @@ Make sure the locations of errors in repl files are right.
   File "missing_semisemi.repl", line 2, characters 3-3:
   Error: Syntax error
   [1]
+
+  $ ocamlformat --repl-file empty_line_begin.repl
+  ocamlformat: ignoring "empty_line_begin.repl" (syntax error)
+  File "empty_line_begin.repl", line 4, characters 0-0:
+  Error: Syntax error: # expected.
+  [1]
