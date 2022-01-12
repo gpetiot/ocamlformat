@@ -21,9 +21,9 @@ let ws = ' ' | '\t'
 rule token = parse
  | eof           { [] }
  | '\n'          { newline lexbuf; `Output "" :: token lexbuf }
- | "# "          { let loc = Location.curr lexbuf in
+ | "# "          { let pos_start = Lexing.lexeme_end_p lexbuf in
                    let c = phrase (Buffer.create 8) lexbuf in
-                   `Command (c, loc) :: token lexbuf }
+                   `Command (c, pos_start) :: token lexbuf }
  | ([^'#' '\n'] [^'\n']* as str) eol
                  { newline lexbuf; `Output str :: token lexbuf }
  | _ as c        { failwith (Printf.sprintf "unexpected character '%c'. Did you forget a space after the '#' at the start of the line?" c) }
@@ -43,14 +43,15 @@ and phrase buf = parse
 let repl_file lx =
   let x =
     try
-      newline lx;
       token lx
     with _ -> raise (Syntaxerr.Error (Expecting (Location.curr lx, ";;")))
   in
   let open Ocaml_413_extended.Parsetree in
   List.fold_left (fun acc -> function
-      | `Command (cmd, _loc) ->
-          { prepl_phrase= Lexing.from_string cmd |> Parse.toplevel_phrase
+      | `Command (cmd, pos_start) ->
+          let cmd_lexbuf = Lexing.from_string cmd in
+          Lexing.set_position cmd_lexbuf pos_start;
+          { prepl_phrase= Parse.toplevel_phrase cmd_lexbuf
           ; prepl_output= "" }
           :: acc
       | `Output line -> (
