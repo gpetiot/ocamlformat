@@ -42,7 +42,9 @@ end
       module RPC = Ocamlformat_rpc_lib.Make (IO)
     ]} *)
 
-module Make (IO : IO.S) : sig
+module type IO = IO.S
+
+module Make (IO : IO) : sig
   module type Command_S = sig
     type t
 
