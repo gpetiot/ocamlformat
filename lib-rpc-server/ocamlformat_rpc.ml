@@ -23,8 +23,7 @@ module IO = struct
     return ()
 end
 
-module Rpc = Ocamlformat_rpc_lib.Protocol
-
+module Rpc = Ocamlformat_rpc_lib_protocol.Protocol
 module Protocol = Rpc.Make (IO)
 
 module V = struct
@@ -34,7 +33,9 @@ module V = struct
     | None -> `Propose_another Rpc.Version.V2
 end
 
-type state = Waiting_for_version | Version_defined of (Rpc.Version.t * Conf.t)
+type state =
+  | Waiting_for_version
+  | Version_defined of (Rpc.Version.t * Conf.t)
 
 let format fg conf source =
   let input_name = "<rpc input>" in
@@ -88,11 +89,9 @@ let run_format_with_args {Rpc.path; config} conf x =
   Option.value_map config ~default:(Ok conf) ~f:(fun c -> run_config conf c)
   >>= fun conf -> run_format conf x
 
-let handle_format_error e output =
-  output stdout (`Error e)
+let handle_format_error e output = output stdout (`Error e)
 
-let handle_path_error e output =
-  output stdout (`Error e)
+let handle_path_error e output = output stdout (`Error e)
 
 let handle_config_error (e : Config_option.Error.t) output =
   let msg =

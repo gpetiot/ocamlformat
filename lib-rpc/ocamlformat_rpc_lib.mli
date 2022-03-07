@@ -20,7 +20,9 @@
     After you decided on the {!module-type-IO} implementation, the
     {!Ocamlformat_rpc_lib.Make} API can then be instantiated:
 
-    {[ module RPC = Ocamlformat_rpc_lib.Make (IO) ]} *)
+    {[
+      module RPC = Ocamlformat_rpc_lib.Make (IO)
+    ]} *)
 
 module Protocol = Protocol
 

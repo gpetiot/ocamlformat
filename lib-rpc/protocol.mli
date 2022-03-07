@@ -32,17 +32,17 @@ module Make (IO : IO.S) : sig
   module V1 :
     Command_S
       with type t =
-            [ `Halt
-            | `Unknown
-            | `Error of string
-            | `Config of (string * string) list
-            | `Format of string ]
+        [ `Halt
+        | `Unknown
+        | `Error of string
+        | `Config of (string * string) list
+        | `Format of string ]
 
   module V2 :
     Command_S
       with type t =
-            [ `Halt
-            | `Unknown
-            | `Error of string
-            | `Format of string * format_args ]
+        [ `Halt
+        | `Unknown
+        | `Error of string
+        | `Format of string * format_args ]
 end
