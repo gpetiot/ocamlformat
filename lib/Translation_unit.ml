@@ -230,21 +230,123 @@ let check_comments (conf : Conf.t) cmts ~old:t_old ~new_:t_new =
     | Ok () -> ()
     | Error e -> internal_error (List.map e ~f:(fun x -> `Comment x)) []
 
+let dump_ast (conf : Conf.t) ?output_file ~input_name fg ~suffix ast print =
+  if conf.opr_opts.debug.v then
+    Some
+      (dump_ast ~input_name ?output_file ~suffix (fun fmt ->
+           print fg fmt ast ) )
+  else None
+
+let dump_formatted ?output_file (conf : Conf.t) ~input_name ?ext ~suffix
+    fmted =
+  if conf.opr_opts.debug.v then
+    Some (dump_formatted ?ext ~input_name ?output_file ~suffix fmted)
+  else None
+
+let check_ast (type ext std) (conf : Conf.t) ~input_name
+    (std_fg : std Std_ast.t) (ext_fg : ext Extended_ast.t) std_t ext_t
+    std_t_new ext_t_new i fmted =
+  let ignore_doc_comments = not conf.opr_opts.comment_check.v in
+  let args ~suffix ~message old_ast new_ast =
+    [ ("message", Some message)
+    ; ("output file", dump_formatted conf ~suffix ~input_name fmted)
+    ; ("old ast", old_ast)
+    ; ("new ast", new_ast) ]
+    |> List.filter_map ~f:(fun (s, f_opt) ->
+           Option.map f_opt ~f:(fun f -> (s, String.sexp_of_t f)) )
+  in
+  if
+    Normalize_std_ast.equal std_fg conf std_t.ast std_t_new.ast
+      ~ignore_doc_comments
+  then
+    if
+      (* standard AST is preserved *)
+      Normalize_extended_ast.equal ext_fg conf ext_t.ast ext_t_new.ast
+        ~ignore_doc_comments
+    then (* extended AST is preserved *)
+      ()
+    else
+      (* extended AST is not preserved *)
+      let old_ast =
+        dump_ast conf ext_fg ~suffix:".old" ~input_name
+          (Normalize_extended_ast.ast ext_fg conf ext_t.ast)
+          Extended_ast.Printast.ast
+      in
+      let new_ast =
+        let file =
+          dump_ast conf ext_fg ~suffix:".new" ~input_name
+            (Normalize_extended_ast.ast ext_fg conf ext_t_new.ast)
+            Extended_ast.Printast.ast
+        in
+        ( match file with
+        | Some file ->
+            if i = 1 then Format.eprintf "[DEBUG] AST structure: %s\n" file
+        | None -> () ) ;
+        file
+      in
+      if
+        (not ignore_doc_comments)
+        && Normalize_extended_ast.equal ext_fg ~ignore_doc_comments:true conf
+             ext_t.ast ext_t_new.ast
+      then
+        (* extended AST preserved when ignoring the doc-comments, so the
+           doc-comments are not preserved *)
+        let args =
+          args ~suffix:".unequal-docs" old_ast new_ast
+            ~message:"doc-comments not preserved in the extended AST"
+        in
+        internal_error (List.map ~f:(fun x -> `Comment x) []) args
+      else
+        (* the AST itself is not preserved, but the extended AST is allowed
+           to change as long as it is parsed the same by the standard
+           parser. *)
+        ()
+  else
+    (* standard AST not preserved *)
+    let old_ast =
+      dump_ast conf std_fg ~suffix:".old" ~input_name
+        (Normalize_std_ast.ast std_fg conf std_t.ast)
+        Std_ast.Printast.ast
+    in
+    let new_ast =
+      let file =
+        dump_ast conf std_fg ~suffix:".new" ~input_name
+          (Normalize_std_ast.ast std_fg conf std_t_new.ast)
+          Std_ast.Printast.ast
+      in
+      ( match file with
+      | Some file ->
+          if i = 1 then Format.eprintf "[DEBUG] AST structure: %s\n" file
+      | None -> () ) ;
+      file
+    in
+    if
+      (not ignore_doc_comments)
+      && Normalize_std_ast.equal std_fg ~ignore_doc_comments:true conf
+           std_t.ast std_t_new.ast
+    then
+      (* standard AST preserved when ignoring the doc-comments, so the
+         doc-comments are not preserved *)
+      let docstrings =
+        Normalize_std_ast.moved_docstrings std_fg conf std_t.ast
+          std_t_new.ast
+      in
+      let args =
+        args ~suffix:".unequal-docs" old_ast new_ast
+          ~message:"doc-comments not preserved in the standard AST"
+      in
+      internal_error (List.map ~f:(fun x -> `Comment x) docstrings) args
+    else
+      (* the AST itself is not preserved *)
+      let args =
+        args ~suffix:".unequal-ast" old_ast new_ast
+          ~message:"standard AST not preserved"
+      in
+      internal_error [`Ast_changed] args
+
 let format (type ext std) (ext_fg : ext Extended_ast.t)
     (std_fg : std Std_ast.t) ?output_file ~input_name ~prev_source
     ~ext_parsed ~std_parsed (conf : Conf.t) =
-  let dump_ast fg ~suffix ast =
-    if conf.opr_opts.debug.v then
-      Some
-        (dump_ast ~input_name ?output_file ~suffix (fun fmt ->
-             Std_ast.Printast.ast fg fmt ast ) )
-    else None
-  in
-  let dump_formatted ?ext ~suffix fmted =
-    if conf.opr_opts.debug.v then
-      Some (dump_formatted ?ext ~input_name ?output_file ~suffix fmted)
-    else None
-  in
   Location.input_name := input_name ;
   (* iterate until formatting stabilizes *)
   let rec print_check ~i ~(conf : Conf.t) ~prev_source ext_t std_t =
@@ -270,7 +372,7 @@ let format (type ext std) (ext_fg : ext Extended_ast.t)
     in
     ( if conf.opr_opts.debug.v then
         format ~box_debug:true |> fst
-        |> dump_formatted ~suffix:"_boxes" ~ext:".html"
+        |> dump_formatted conf ~suffix:"_boxes" ~ext:".html" ~input_name
         |> function
         | Some file ->
             if i = 1 then Format.eprintf "[DEBUG] Box structure: %s\n" file
@@ -294,7 +396,8 @@ let format (type ext std) (ext_fg : ext Extended_ast.t)
       Ok (strlocs, fmted) )
     else
       let exn_args () =
-        [("output file", dump_formatted ~suffix:".invalid-ast" fmted)]
+        [ ( "output file"
+          , dump_formatted conf ~suffix:".invalid-ast" ~input_name fmted ) ]
         |> List.filter_map ~f:(fun (s, f_opt) ->
                Option.map f_opt ~f:(fun f -> (s, String.sexp_of_t f)) )
       in
@@ -319,53 +422,8 @@ let format (type ext std) (ext_fg : ext Extended_ast.t)
         | exception exn -> internal_error [`Cannot_parse exn] (exn_args ())
         | std_t_new -> Ok std_t_new
       in
-      (* Ast not preserved ? *)
-      ( if
-          (not
-             (Normalize_std_ast.equal std_fg conf std_t.ast std_t_new.ast
-                ~ignore_doc_comments:(not conf.opr_opts.comment_check.v) ) )
-          && not
-               (Normalize_extended_ast.equal ext_fg conf ext_t.ast
-                  ext_t_new.ast
-                  ~ignore_doc_comments:(not conf.opr_opts.comment_check.v) )
-        then
-          let old_ast =
-            dump_ast std_fg ~suffix:".old"
-              (Normalize_std_ast.ast std_fg conf std_t.ast)
-          in
-          let new_ast =
-            dump_ast std_fg ~suffix:".new"
-              (Normalize_std_ast.ast std_fg conf std_t_new.ast)
-          in
-          let args ~suffix =
-            [ ("output file", dump_formatted ~suffix fmted)
-            ; ("old ast", old_ast)
-            ; ("new ast", new_ast) ]
-            |> List.filter_map ~f:(fun (s, f_opt) ->
-                   Option.map f_opt ~f:(fun f -> (s, String.sexp_of_t f)) )
-          in
-          if
-            Normalize_std_ast.equal std_fg ~ignore_doc_comments:true conf
-              std_t.ast std_t_new.ast
-          then
-            let docstrings =
-              Normalize_std_ast.moved_docstrings std_fg conf std_t.ast
-                std_t_new.ast
-            in
-            let args = args ~suffix:".unequal-docs" in
-            internal_error
-              (List.map ~f:(fun x -> `Comment x) docstrings)
-              args
-          else
-            let args = args ~suffix:".unequal-ast" in
-            internal_error [`Ast_changed] args
-        else
-          dump_ast std_fg ~suffix:""
-            (Normalize_std_ast.ast std_fg conf std_t_new.ast)
-          |> function
-          | Some file ->
-              if i = 1 then Format.eprintf "[DEBUG] AST structure: %s\n" file
-          | None -> () ) ;
+      check_ast conf std_fg ext_fg std_t ext_t std_t_new ext_t_new i fmted
+        ~input_name ;
       check_comments conf cmts_t ~old:ext_t ~new_:ext_t_new ;
       (* Too many iteration ? *)
       if i >= conf.opr_opts.max_iters.v then (

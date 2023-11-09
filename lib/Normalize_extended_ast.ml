@@ -238,3 +238,5 @@ let diff_cmts (conf : Conf.t) x y =
 let equal fragment ~ignore_doc_comments c ast1 ast2 =
   let map = ast fragment c ~ignore_doc_comments in
   equal fragment (map ast1) (map ast2)
+
+let ast = ast ~ignore_doc_comments:false

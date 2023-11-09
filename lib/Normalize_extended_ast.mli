@@ -11,6 +11,9 @@
 
 type 'a t = 'a Extended_ast.t
 
+val ast : 'a t -> Conf.t -> 'a -> 'a
+(** Normalize an AST fragment. *)
+
 val dedup_cmts : 'a t -> 'a -> Cmt.t list -> Cmt.t list
 (** Remove comments that duplicate docstrings (or other comments). *)
 
