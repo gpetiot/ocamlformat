@@ -346,13 +346,11 @@ and expression i ppf x =
       line (i + 1) ppf "loc_in: %a\n" fmt_location loc_in;
       value_bindings i ppf l;
       expression i ppf e;
-  | Pexp_function l ->
+  | Pexp_function (params, c, body) ->
       line i ppf "Pexp_function\n";
-      list i case ppf l;
-  | Pexp_fun (p, e) ->
-      line i ppf "Pexp_fun\n";
-      expr_function_param i ppf p;
-      expression i ppf e;
+      list i expr_function_param ppf params;
+      option i type_constraint ppf c;
+      function_body i ppf body
   | Pexp_apply (e, l) ->
       line i ppf "Pexp_apply\n";
       expression i ppf e;
@@ -522,12 +520,22 @@ and param_newtype i ppf ty =
 and expr_function_param i ppf { pparam_desc = desc; pparam_loc = loc } =
   line i ppf "function_param %a\n" fmt_location loc;
   match desc with
-  | Param_val x -> param_val i ppf x
-  | Param_newtype x -> param_newtype i ppf x
+  | Pparam_val x -> param_val i ppf x
+  | Pparam_newtype x -> param_newtype i ppf x
 
 and class_function_param i ppf { pparam_desc = desc; pparam_loc = loc } =
   line i ppf "function_param %a\n" fmt_location loc;
   param_val i ppf desc
+
+and function_body i ppf body =
+  match body with
+  | Pfunction_body e ->
+      line i ppf "Pfunction_body\n";
+      expression (i+1) ppf e
+  | Pfunction_cases (cases, loc, attrs) ->
+      line i ppf "Pfunction_cases %a\n" fmt_location loc;
+      attributes (i+1) ppf attrs;
+      list (i+1) case ppf cases
 
 and type_constraint i ppf constraint_ =
   match constraint_ with

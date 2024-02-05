@@ -122,8 +122,8 @@ module FP = struct
     List.map (map_loc sub) ty
 
   let map_expr sub = function
-    | Param_val x -> Param_val (map_param_val sub x)
-    | Param_newtype x -> Param_newtype (map_param_newtype sub x)
+    | Pparam_val x -> Pparam_val (map_param_val sub x)
+    | Pparam_newtype x -> Pparam_newtype (map_param_newtype sub x)
 
   let map_class sub x = map_param_val sub x
 
@@ -498,6 +498,16 @@ end
 module E = struct
   (* Value expressions for the core language *)
 
+  let map_function_body sub body =
+    match body with
+    | Pfunction_body e ->
+        Pfunction_body (sub.expr sub e)
+    | Pfunction_cases (cases, loc, attributes) ->
+        let cases = sub.cases sub cases in
+        let loc = sub.location sub loc in
+        let attributes = sub.attributes sub attributes in
+        Pfunction_cases (cases, loc, attributes)
+
   let map_constraint sub c =
     match c with
     | Pconstraint ty -> Pconstraint (sub.typ sub ty)
@@ -520,11 +530,11 @@ module E = struct
       let loc_in = sub.location sub loc_in in
         let_ ~loc ~loc_in ~attrs (sub.value_bindings sub lbs)
           (sub.expr sub e)
-    | Pexp_fun (p, e) ->
-        fun_ ~loc ~attrs
-          (FP.map sub FP.map_expr p)
-          (sub.expr sub e)
-    | Pexp_function pel -> function_ ~loc ~attrs (sub.cases sub pel)
+    | Pexp_function (ps, c, b) ->
+      function_ ~loc ~attrs
+        (List.map (FP.map sub FP.map_expr) ps)
+        (map_opt (map_constraint sub) c)
+        (map_function_body sub b)
     | Pexp_apply (e, l) ->
         apply ~loc ~attrs
           (sub.expr sub e)

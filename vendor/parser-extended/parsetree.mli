@@ -313,15 +313,21 @@ and expression_desc =
                when [flag] is {{!Asttypes.rec_flag.Recursive}[Recursive]}.
             - [loc_in] is the location of the [in] keyword.
          *)
-  | Pexp_function of case list  (** [function P1 -> E1 | ... | Pn -> En] *)
-  | Pexp_fun of expr_function_param * expression
-      (** [Pexp_fun(P, E)] represents:
-            - [fun P -> E]
-            - [fun ~l:P -> E]
-            - [fun ?l:P -> E]
-            - [fun ?l:(P = E0) -> E]
-            - [fun (type t) -> E]
-         *)
+  | Pexp_function of
+      expr_function_param list * type_constraint option * function_body
+  (** [Pexp_function ([P1; ...; Pn], C, body)] represents any construct
+      involving [fun] or [function], including:
+      - [fun P1 ... Pn -> E]
+        when [body = Pfunction_body E]
+      - [fun P1 ... Pn -> function p1 -> e1 | ... | pm -> em]
+        when [body = Pfunction_cases [ p1 -> e1; ...; pm -> em ]]
+
+      [C] represents a type constraint or coercion placed immediately before the
+      arrow, e.g. [fun P1 ... Pn : ty -> ...] when [C = Some (Pconstraint ty)].
+
+      A function must have parameters. [Pexp_function (params, _, body)] must
+      have non-empty [params] or a [Pfunction_cases _] body.
+  *)
   | Pexp_apply of expression * (arg_label * expression) list
       (** [Pexp_apply(E0, [(l1, E1) ; ... ; (ln, En)])]
             represents [E0 ~l1:E1 ... ~ln:En]
@@ -489,22 +495,32 @@ and param_newtype = string loc list
   (** [(type x y z)]. *)
 
 and 'a function_param =
-  {
-    pparam_loc : Location.t;
+  { pparam_loc : Location.t;
     pparam_desc : 'a;
   }
 
 and param_val_or_newtype =
-  | Param_val of param_val
-  | Param_newtype of param_newtype
+  | Pparam_val of param_val
+  | Pparam_newtype of param_newtype
 
 and expr_function_param = param_val_or_newtype function_param
 
 and class_function_param = param_val function_param
 
+and function_body =
+  | Pfunction_body of expression
+  | Pfunction_cases of case list * Location.t * attributes
+  (** In [Pfunction_cases (_, loc, attrs)], the location extends from the
+      start of the [function] keyword to the end of the last case. The compiler
+      will only use typechecking-related attributes from [attrs], e.g. enabling
+      or disabling a warning.
+  *)
+(** See the comment on {{!expression_desc.Pexp_function}[Pexp_function]}. *)
+
 and type_constraint =
   | Pconstraint of core_type
   | Pcoerce of core_type option * core_type
+(** See the comment on {{!expression_desc.Pexp_function}[Pexp_function]}. *)
 
 (** {2 Value descriptions} *)
 
